@@ -1,26 +1,15 @@
-/* ============================================================
-   PO Tracking Dashboard — Client-side logic
-   ============================================================ */
-
-let rawRows = [];          // all parsed rows
-let currentCategory = null;
-let currentCity = null;
+let rawRows = [];
 let chartInstance = null;
-let sortColumn = null;
-let sortAsc = true;
 
-const REQUIRED_COLUMNS = [
-  'Category', 'City', 'Vendor_Name', 'Delivery_Location',
-  'PO_No', 'PO_Date', 'PO_Expiry', 'Status', 'PO_QTY'
-];
+// Set Date in header
+document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
 
-/* ---------- File Upload & Parsing ---------- */
-
+// File Upload
 document.getElementById('fileInput').addEventListener('change', function (e) {
   const file = e.target.files[0];
   if (!file) return;
+  document.getElementById('fileName').textContent = file.name;
   parseFile(file);
-  e.target.value = ''; // allow re-uploading same file
 });
 
 function parseFile(file) {
@@ -31,7 +20,6 @@ function parseFile(file) {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: 'greedy',
-      dynamicTyping: true,
       complete: (results) => handleParsed(results.data, results.meta.fields),
       error: (err) => setStatus('CSV parse error: ' + err.message, 'error')
     });
@@ -49,71 +37,61 @@ function parseFile(file) {
       }
     };
     reader.readAsArrayBuffer(file);
-  } else if (ext === 'json') {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        const rows = Array.isArray(data) ? data : (data.rows || data.data || []);
-        const fields = rows.length ? Object.keys(rows[0]) : [];
-        handleParsed(rows, fields);
-      } catch (err) {
-        setStatus('JSON parse error: ' + err.message, 'error');
-      }
-    };
-    reader.readAsText(file);
-  } else {
-    setStatus('Unsupported file type. Use .csv, .xlsx, .xls, or .json', 'error');
   }
 }
 
-function handleParsed(rows, fields) {
-  // Normalize column names (trim)
-  const normalized = rows.map(row => {
-    const r = {};
-    Object.keys(row).forEach(k => { r[k.trim()] = row[k]; });
-    return r;
-  });
+// Make column matching forgiving (ignores spaces, underscores, and case)
+function cleanKey(str) {
+  return String(str).replace(/[\s_]/g, '').toLowerCase();
+}
 
-  // Check required columns
-  const missing = REQUIRED_COLUMNS.filter(c => !fields.includes(c));
-  if (missing.length > 0) {
-    setStatus('Missing columns: ' + missing.join(', '), 'error');
+function handleParsed(rows, fields) {
+  if (!rows || rows.length === 0) {
+    setStatus('The uploaded file is empty.', 'error');
     return;
   }
 
-  // Normalize and validate
-  rawRows = normalized.map(r => ({
-    Category: String(r.Category || '').trim(),
-    City: String(r.City || '').trim(),
-    Vendor_Name: String(r.Vendor_Name || '').trim(),
-    Delivery_Location: String(r.Delivery_Location || '').trim(),
-    PO_No: String(r.PO_No || '').trim(),
-    PO_Date: normalizeDate(r.PO_Date),
-    PO_Expiry: normalizeDate(r.PO_Expiry),
-    Appointment_Date: normalizeDate(r.Appointment_Date),
-    Status: String(r.Status || '').trim(),
-    PO_QTY: Number(r.PO_QTY) || 0
-  })).filter(r => r.PO_No && r.Category && r.City);
+  // Map the actual file headers to our expected headers
+  const map = {};
+  fields.forEach(f => { map[cleanKey(f)] = f; });
+
+  const required = ['Category', 'City', 'Vendor_Name', 'Delivery_Location', 'PO_No', 'PO_Date', 'PO_Expiry', 'Status', 'PO_QTY'];
+  const missing = required.filter(req => !map[cleanKey(req)]);
+
+  if (missing.length > 0) {
+    setStatus('Missing columns: ' + missing.join(', ') + '. Please check your file headers.', 'error');
+    return;
+  }
+
+  // Normalize data
+  rawRows = rows.map(r => ({
+    Category: String(r[map['category']] || '').trim(),
+    City: String(r[map['city']] || '').trim(),
+    Vendor_Name: String(r[map['vendorname']] || '').trim(),
+    Delivery_Location: String(r[map['deliverylocation']] || '').trim(),
+    PO_No: String(r[map['pono']] || '').trim(),
+    PO_Date: normalizeDate(r[map['podate']]),
+    PO_Expiry: normalizeDate(r[map['poexpiry']]),
+    Appointment_Date: map['appointmentdate'] ? normalizeDate(r[map['appointmentdate']]) : '',
+    Status: String(r[map['status']] || '').trim(),
+    PO_QTY: Number(r[map['poqty']]) || 0
+  })).filter(r => r.PO_No && r.Category);
 
   if (rawRows.length === 0) {
-    setStatus('No valid rows found. Check that PO_No, Category, and City are populated.', 'error');
+    setStatus('No valid rows found. Check that PO_No and Category are populated.', 'error');
     return;
   }
 
-  setStatus(`Loaded ${rawRows.length} rows.`, 'success');
-  resetToPhase1();
+  setStatus(`Successfully loaded ${rawRows.length} rows.`, 'success');
+  initializeDashboard();
 }
 
 function normalizeDate(val) {
   if (!val) return '';
   if (val instanceof Date) return val.toISOString().slice(0, 10);
   const s = String(val).trim();
-  // Try to parse and reformat
   const d = new Date(s);
-  if (!isNaN(d.getTime()) && s.match(/\d/)) {
-    return d.toISOString().slice(0, 10);
-  }
+  if (!isNaN(d.getTime()) && s.match(/\d/)) return d.toISOString().slice(0, 10);
   return s;
 }
 
@@ -123,357 +101,204 @@ function setStatus(msg, cls) {
   el.className = 'status-msg ' + (cls || '');
 }
 
-/* ---------- Aggregation Helpers ---------- */
+function initializeDashboard() {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('filterContainer').style.display = 'grid';
+  document.getElementById('kpiGrid').style.display = 'grid';
+  document.getElementById('mainContent').style.display = 'block';
 
-function groupBy(rows, keyFn) {
-  const map = new Map();
-  rows.forEach(r => {
-    const k = keyFn(r);
-    if (!map.has(k)) map.set(k, []);
-    map.get(k).push(r);
+  populateFilters();
+  updateDashboard();
+}
+
+function populateFilters() {
+  const cats = [...new Set(rawRows.map(r => r.Category))].sort();
+  const cities = [...new Set(rawRows.map(r => r.City))].sort();
+  const stats = [...new Set(rawRows.map(r => r.Status))].sort();
+
+  document.getElementById('filterCategory').innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('filterCity').innerHTML = '<option value="">All Cities</option>' + cities.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('filterStatus').innerHTML = '<option value="">All Statuses</option>' + stats.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+// Event Listeners for filters
+document.getElementById('filterCategory').addEventListener('change', updateDashboard);
+document.getElementById('filterCity').addEventListener('change', updateDashboard);
+document.getElementById('filterStatus').addEventListener('change', updateDashboard);
+document.getElementById('searchInput').addEventListener('input', updateDashboard);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  document.getElementById('filterCategory').value = '';
+  document.getElementById('filterCity').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('searchInput').value = '';
+  updateDashboard();
+});
+
+function updateDashboard() {
+  const catFilter = document.getElementById('filterCategory').value;
+  const cityFilter = document.getElementById('filterCity').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+  const searchStr = document.getElementById('searchInput').value.toLowerCase();
+
+  // Apply Filters
+  const filtered = rawRows.filter(r => {
+    if (catFilter && r.Category !== catFilter) return false;
+    if (cityFilter && r.City !== cityFilter) return false;
+    if (statusFilter && r.Status !== statusFilter) return false;
+    if (searchStr && !r.PO_No.toLowerCase().includes(searchStr) && !r.Vendor_Name.toLowerCase().includes(searchStr)) return false;
+    return true;
   });
-  return map;
-}
 
-function distinctPOs(rows) {
-  return new Set(rows.map(r => r.PO_No)).size;
-}
+  document.getElementById('rowCount').textContent = `${filtered.length} filtered rows`;
 
-function sumQTY(rows) {
-  return rows.reduce((s, r) => s + r.PO_QTY, 0);
-}
-
-function countStatus(rows, status) {
-  return rows.filter(r => r.Status === status).length;
-}
-
-function daysUntil(dateStr) {
-  if (!dateStr) return Infinity;
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return Infinity;
-  return Math.ceil((d - new Date()) / (1000 * 60 * 60 * 24));
-}
-
-/* ---------- Phase 1 ---------- */
-
-function resetToPhase1() {
-  currentCategory = null;
-  currentCity = null;
-  document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
-  document.getElementById('phase1').classList.add('active');
-  renderBreadcrumb();
-  renderPhase1();
-}
-
-function renderPhase1() {
-  renderKPIs();
-  renderCategoryChart();
-  renderCategoryTable();
-}
-
-function renderKPIs() {
-  const totalPOs = distinctPOs(rawRows);
-  const totalQTY = sumQTY(rawRows);
-  const open = countStatus(rawRows, 'Open');
-  const expired = countStatus(rawRows, 'Expired');
-  const expiring30 = rawRows.filter(r => {
-    const d = daysUntil(r.PO_Expiry);
-    return d >= 0 && d <= 30 && r.Status !== 'Delivered' && r.Status !== 'Cancelled';
+  // Update KPIs
+  const uniquePOs = new Set(filtered.map(r => r.PO_No)).size;
+  const totalQty = filtered.reduce((sum, r) => sum + r.PO_QTY, 0);
+  const openCount = filtered.filter(r => r.Status.toLowerCase() === 'open').length;
+  const expiredCount = filtered.filter(r => r.Status.toLowerCase() === 'expired').length;
+  
+  // Expiring within 30 days
+  const expiring = filtered.filter(r => {
+    if (!r.PO_Expiry) return false;
+    const days = Math.ceil((new Date(r.PO_Expiry) - new Date()) / (1000 * 60 * 60 * 24));
+    return days >= 0 && days <= 30 && r.Status !== 'Delivered' && r.Status !== 'Cancelled';
   }).length;
 
-  document.getElementById('kpiCards').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Total POs</div><div class="kpi-value">${totalPOs.toLocaleString()}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Total PO QTY</div><div class="kpi-value">${totalQTY.toLocaleString()}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Open POs</div><div class="kpi-value">${open.toLocaleString()}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Expired</div><div class="kpi-value">${expired.toLocaleString()}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Expiring ≤30d</div><div class="kpi-value">${expiring30.toLocaleString()}</div></div>
-  `;
+  document.getElementById('kpiTotalPOs').textContent = uniquePOs.toLocaleString();
+  document.getElementById('kpiTotalQty').textContent = totalQty.toLocaleString();
+  document.getElementById('kpiOpen').textContent = openCount.toLocaleString();
+  document.getElementById('kpiExpired').textContent = expiredCount.toLocaleString();
+  document.getElementById('kpiExpiring').textContent = expiring.toLocaleString();
+
+  // Update Table Title
+  let title = "PO Tracking — ";
+  if (catFilter && cityFilter) title += `${catFilter} in ${cityFilter}`;
+  else if (catFilter) title += catFilter;
+  else if (cityFilter) title += cityFilter;
+  else title += "Overview";
+  document.getElementById('viewTitle').textContent = title;
+
+  renderTable(filtered);
 }
 
-function renderCategoryChart() {
-  const catMap = groupBy(rawRows, r => r.Category);
-  const labels = [];
-  const values = [];
-  catMap.forEach((rows, cat) => {
-    labels.push(cat);
-    values.push(sumQTY(rows));
-  });
+function renderTable(data) {
+  const thead = document.getElementById('tableHead');
+  const tbody = document.getElementById('tableBody');
 
-  // Sort descending
-  const order = labels.map((l, i) => i).sort((a, b) => values[b] - values[a]);
-  const sortedLabels = order.map(i => labels[i]);
-  const sortedValues = order.map(i => values[i]);
+  // Dynamically change columns based on drill-down level
+  const catFilter = document.getElementById('filterCategory').value;
+  const cityFilter = document.getElementById('filterCity').value;
 
-  const ctx = document.getElementById('categoryChart').getContext('2d');
-  if (chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: sortedLabels,
-      datasets: [{
-        label: 'Sum of PO QTY',
-        data: sortedValues,
-        backgroundColor: 'rgba(37, 99, 235, 0.7)',
-        borderColor: 'rgba(37, 99, 235, 1)',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { beginAtZero: true } }
-    }
-  });
-}
+  let cols = [];
+  if (!catFilter && !cityFilter) {
+    // Phase 1: Overall
+    cols = ['Category', 'Total POs', 'Total PO QTY', 'Open', 'Expired'];
+  } else if (catFilter && !cityFilter) {
+    // Phase 2: Category + City
+    cols = ['City', 'Total POs', 'Total PO QTY', 'Open', 'Expired'];
+  } else {
+    // Phase 3: Detailed Lines
+    cols = ['Vendor Name', 'Delivery Location', 'PO No', 'PO Date', 'PO Expiry', 'Appointment Date', 'Status', 'PO QTY'];
+  }
 
-function renderCategoryTable() {
-  const catMap = groupBy(rawRows, r => r.Category);
-  const tbody = document.querySelector('#categoryTable tbody');
-  tbody.innerHTML = '';
+  thead.innerHTML = `<tr>${cols.map(c => `<th>${c.toUpperCase()}</th>`).join('')}</tr>`;
 
-  const entries = [];
-  catMap.forEach((rows, cat) => {
-    entries.push({
-      category: cat,
-      pos: distinctPOs(rows),
-      qty: sumQTY(rows),
-      open: countStatus(rows, 'Open'),
-      delivered: countStatus(rows, 'Delivered'),
-      expired: countStatus(rows, 'Expired'),
-      expiring30: rows.filter(r => {
-        const d = daysUntil(r.PO_Expiry);
-        return d >= 0 && d <= 30 && r.Status !== 'Delivered' && r.Status !== 'Cancelled';
-      }).length
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center; padding: 2rem;">No data matches your filters.</td></tr>`;
+    return;
+  }
+
+  let html = '';
+
+  // Aggregate logic depending on view
+  if (!catFilter && !cityFilter) {
+    const groups = {};
+    data.forEach(r => {
+      if (!groups[r.Category]) groups[r.Category] = [];
+      groups[r.Category].push(r);
     });
-  });
-
-  entries.sort((a, b) => b.qty - a.qty);
-
-  entries.forEach(e => {
-    const pct = e.pos > 0 ? ((e.expiring30 / e.pos) * 100).toFixed(1) : '0.0';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>${e.category}</strong></td>
-      <td>${e.pos.toLocaleString()}</td>
-      <td>${e.qty.toLocaleString()}</td>
-      <td>${e.open.toLocaleString()}</td>
-      <td>${e.delivered.toLocaleString()}</td>
-      <td>${e.expired.toLocaleString()}</td>
-      <td>${pct}%</td>
-    `;
-    tr.addEventListener('click', () => goToPhase2(e.category));
-    tbody.appendChild(tr);
-  });
-}
-
-/* ---------- Phase 2 ---------- */
-
-function goToPhase2(category) {
-  currentCategory = category;
-  currentCity = null;
-  document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
-  document.getElementById('phase2').classList.add('active');
-  renderBreadcrumb();
-  renderPhase2();
-}
-
-function renderPhase2() {
-  document.getElementById('phase2Title').textContent = `Category: ${currentCategory}`;
-  const catRows = rawRows.filter(r => r.Category === currentCategory);
-  const cityMap = groupBy(catRows, r => r.City);
-  const tbody = document.querySelector('#cityTable tbody');
-  tbody.innerHTML = '';
-
-  const entries = [];
-  cityMap.forEach((rows, city) => {
-    const expiries = rows.map(r => r.PO_Expiry).filter(Boolean).sort();
-    entries.push({
-      city,
-      pos: distinctPOs(rows),
-      qty: sumQTY(rows),
-      open: countStatus(rows, 'Open'),
-      expired: countStatus(rows, 'Expired'),
-      nearest: expiries[0] || '—'
+    Object.keys(groups).sort().forEach(cat => {
+      const rows = groups[cat];
+      const pos = new Set(rows.map(r => r.PO_No)).size;
+      const qty = rows.reduce((s, r) => s + r.PO_QTY, 0);
+      const open = rows.filter(r => r.Status.toLowerCase() === 'open').length;
+      const exp = rows.filter(r => r.Status.toLowerCase() === 'expired').length;
+      html += `<tr>
+        <td><strong>${cat}</strong></td>
+        <td>${pos}</td>
+        <td>${qty.toLocaleString()}</td>
+        <td>${open}</td>
+        <td>${exp}</td>
+      </tr>`;
     });
-  });
+  } else if (catFilter && !cityFilter) {
+    const groups = {};
+    data.forEach(r => {
+      if (!groups[r.City]) groups[r.City] = [];
+      groups[r.City].push(r);
+    });
+    Object.keys(groups).sort().forEach(city => {
+      const rows = groups[city];
+      const pos = new Set(rows.map(r => r.PO_No)).size;
+      const qty = rows.reduce((s, r) => s + r.PO_QTY, 0);
+      const open = rows.filter(r => r.Status.toLowerCase() === 'open').length;
+      const exp = rows.filter(r => r.Status.toLowerCase() === 'expired').length;
+      html += `<tr>
+        <td><strong>${city}</strong></td>
+        <td>${pos}</td>
+        <td>${qty.toLocaleString()}</td>
+        <td>${open}</td>
+        <td>${exp}</td>
+      </tr>`;
+    });
+  } else {
+    // Detailed View (Aggregated by PO)
+    const poMap = new Map();
+    data.forEach(r => {
+      if (!poMap.has(r.PO_No)) poMap.set(r.PO_No, { ...r, PO_QTY: 0 });
+      poMap.get(r.PO_No).PO_QTY += r.PO_QTY;
+    });
 
-  entries.sort((a, b) => b.qty - a.qty);
+    Array.from(poMap.values()).forEach(r => {
+      let badgeClass = 'badge-delivered';
+      if (r.Status.toLowerCase() === 'open') badgeClass = 'badge-open';
+      else if (r.Status.toLowerCase() === 'expired') badgeClass = 'badge-expired';
+      else if (r.Status.toLowerCase() === 'in transit') badgeClass = 'badge-transit';
 
-  entries.forEach(e => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>${e.city}</strong></td>
-      <td>${e.pos.toLocaleString()}</td>
-      <td>${e.qty.toLocaleString()}</td>
-      <td>${e.open.toLocaleString()}</td>
-      <td>${e.expired.toLocaleString()}</td>
-      <td>${e.nearest}</td>
-    `;
-    tr.addEventListener('click', () => goToPhase3(e.city));
-    tbody.appendChild(tr);
-  });
-}
-
-/* ---------- Phase 3 ---------- */
-
-function goToPhase3(city) {
-  currentCity = city;
-  document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
-  document.getElementById('phase3').classList.add('active');
-  renderBreadcrumb();
-  renderPhase3();
-}
-
-function renderPhase3() {
-  document.getElementById('phase3Title').textContent =
-    `${currentCategory} › ${currentCity}`;
-  renderDetailTable();
-}
-
-function renderDetailTable() {
-  const filter = document.getElementById('statusFilter').value;
-  let rows = rawRows.filter(r =>
-    r.Category === currentCategory && r.City === currentCity
-  );
-  if (filter) rows = rows.filter(r => r.Status === filter);
-
-  // Aggregate by PO_No (sum QTY per PO, keep first row's other fields)
-  const poMap = new Map();
-  rows.forEach(r => {
-    if (!poMap.has(r.PO_No)) {
-      poMap.set(r.PO_No, { ...r, PO_QTY: 0 });
-    }
-    poMap.get(r.PO_No).PO_QTY += r.PO_QTY;
-  });
-
-  let poRows = Array.from(poMap.values());
-
-  // Sorting
-  if (sortColumn) {
-    poRows.sort((a, b) => {
-      let va = a[sortColumn], vb = b[sortColumn];
-      if (sortColumn === 'PO_QTY') { va = Number(va); vb = Number(vb); }
-      if (va < vb) return sortAsc ? -1 : 1;
-      if (va > vb) return sortAsc ? 1 : -1;
-      return 0;
+      html += `<tr>
+        <td>${r.Vendor_Name}</td>
+        <td>${r.Delivery_Location}</td>
+        <td><strong>${r.PO_No}</strong></td>
+        <td>${r.PO_Date || '—'}</td>
+        <td>${r.PO_Expiry || '—'}</td>
+        <td>${r.Appointment_Date || '—'}</td>
+        <td><span class="badge ${badgeClass}">${r.Status}</span></td>
+        <td><strong>${r.PO_QTY.toLocaleString()}</strong></td>
+      </tr>`;
     });
   }
 
-  const tbody = document.querySelector('#detailTable tbody');
-  tbody.innerHTML = '';
-
-  poRows.forEach(r => {
-    const days = daysUntil(r.PO_Expiry);
-    let rowClass = '';
-    if (r.Status === 'Expired') rowClass = 'status-expired';
-    else if (r.Status === 'Delivered') rowClass = 'status-delivered';
-    else if (days >= 0 && days <= 14) rowClass = 'status-expiring';
-
-    const tr = document.createElement('tr');
-    if (rowClass) tr.className = rowClass;
-    tr.innerHTML = `
-      <td>${r.Vendor_Name}</td>
-      <td>${r.Delivery_Location}</td>
-      <td>${r.PO_No}</td>
-      <td>${r.PO_Date || '—'}</td>
-      <td>${r.PO_Expiry || '—'}</td>
-      <td>${r.Appointment_Date || '—'}</td>
-      <td>${r.Status}</td>
-      <td>${r.PO_QTY.toLocaleString()}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  // Store current filtered rows for export
-  tbody._currentRows = poRows;
+  tbody.innerHTML = html;
 }
 
-/* ---------- Sorting ---------- */
-
-document.querySelectorAll('#detailTable th[data-sort]').forEach(th => {
-  th.addEventListener('click', () => {
-    const col = th.dataset.sort;
-    if (sortColumn === col) {
-      sortAsc = !sortAsc;
-    } else {
-      sortColumn = col;
-      sortAsc = true;
-    }
-    renderDetailTable();
-  });
-});
-
-/* ---------- Status Filter ---------- */
-
-document.getElementById('statusFilter').addEventListener('change', renderDetailTable);
-
-/* ---------- Export CSV ---------- */
-
+// Export Function
 document.getElementById('exportBtn').addEventListener('click', () => {
-  const tbody = document.querySelector('#detailTable tbody');
-  const rows = tbody._currentRows || [];
-  if (rows.length === 0) { alert('No data to export.'); return; }
-
-  const headers = ['Vendor Name', 'Delivery Location', 'PO No', 'PO Date',
-    'PO Expiry', 'Appointment Date', 'Status', 'Sum of PO QTY'];
-  const csvRows = [headers.join(',')];
-  rows.forEach(r => {
-    csvRows.push([
-      `"${r.Vendor_Name}"`,
-      `"${r.Delivery_Location}"`,
-      `"${r.PO_No}"`,
-      r.PO_Date,
-      r.PO_Expiry,
-      r.Appointment_Date,
-      `"${r.Status}"`,
-      r.PO_QTY
-    ].join(','));
-  });
-
-  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+  const table = document.getElementById('dataTable');
+  if (!table || table.rows.length <= 1) { alert('No data to export.'); return; }
+  
+  let csvContent = "";
+  for (let i = 0; i < table.rows.length; i++) {
+    let rowData = [];
+    for (let j = 0; j < table.rows[i].cells.length; j++) {
+      rowData.push(`"${table.rows[i].cells[j].innerText}"`);
+    }
+    csvContent += rowData.join(",") + "\n";
+  }
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `po-export-${currentCategory}-${currentCity}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "PO_Export.csv";
+  link.click();
 });
-
-/* ---------- Breadcrumb ---------- */
-
-function renderBreadcrumb() {
-  const bc = document.getElementById('breadcrumb');
-  let html = '<a data-nav="home">All Categories</a>';
-  if (currentCategory) {
-    html += ` › <a data-nav="cat">${currentCategory}</a>`;
-  }
-  if (currentCity) {
-    html += ` › <span>${currentCity}</span>`;
-  }
-  bc.innerHTML = html;
-
-  bc.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      const nav = a.dataset.nav;
-      if (nav === 'home') resetToPhase1();
-      else if (nav === 'cat') goToPhase2(currentCategory);
-    });
-  });
-}
-
-/* ---------- Init ---------- */
-
-// Try to load a default dataset from data/latest.csv if present
-fetch('data/latest.csv')
-  .then(r => { if (!r.ok) throw new Error('no default'); return r.text(); })
-  .then(text => {
-    Papa.parse(text, {
-      header: true, skipEmptyLines: 'greedy', dynamicTyping: true,
-      complete: (res) => handleParsed(res.data, res.meta.fields)
-    });
-  })
-  .catch(() => {
-    setStatus('Upload a CSV, Excel, or JSON file to begin.', '');
-  });
