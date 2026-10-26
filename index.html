@@ -4,10 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PO Tracking Live Dashboard</title>
+  
+  <!-- Choices.js for Multi-Select Dropdowns -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+  
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -21,8 +24,8 @@
     </div>
   </header>
 
-  <!-- Upload Section -->
   <div class="container">
+    <!-- Upload Section -->
     <div class="card upload-section">
       <h2>Upload Latest Reports</h2>
       <div class="upload-grid">
@@ -38,34 +41,33 @@
       </div>
     </div>
 
-    <!-- Filter Bar (Like GETAWAY) -->
-    <div class="card filter-section">
-      <div class="filter-grid" id="filterContainer" style="display:none;">
-        <div>
+    <!-- Filter Bar -->
+    <div class="card filter-section" id="filterSection" style="display:none;">
+      <div class="filter-grid">
+        <div class="filter-item">
           <label>CATEGORY</label>
-          <select id="filterCategory"><option value="">All Categories</option></select>
+          <select id="filterCategory" multiple></select>
         </div>
-        <div>
+        <div class="filter-item">
           <label>CITY</label>
-          <select id="filterCity"><option value="">All Cities</option></select>
+          <select id="filterCity" multiple></select>
         </div>
-        <div>
+        <div class="filter-item">
           <label>STATUS</label>
-          <select id="filterStatus"><option value="">All Statuses</option></select>
+          <select id="filterStatus" multiple></select>
         </div>
-        <div>
+        <div class="filter-item search-box">
           <label>SEARCH</label>
           <input type="text" id="searchInput" placeholder="Search PO / Vendor...">
         </div>
         <div class="filter-actions">
           <button id="resetBtn" class="btn-reset">Reset Filters</button>
-          <button id="exportBtn" class="btn-export">Export Excel</button>
+          <button id="exportBtn" class="btn-export">Export CSV</button>
         </div>
       </div>
-      <div id="emptyState" style="color:#64748b; font-size: 0.9rem;">No report uploaded. Please choose a file above.</div>
     </div>
 
-    <!-- KPI Cards (Like GETAWAY) -->
+    <!-- KPI Cards -->
     <div class="kpi-grid" id="kpiGrid" style="display:none;">
       <div class="kpi-card">
         <div class="kpi-label">TOTAL POs</div>
@@ -105,6 +107,8 @@
     </div>
   </div>
 
+  <!-- Choices.js Script -->
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
