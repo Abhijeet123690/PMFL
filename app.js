@@ -1,10 +1,8 @@
 let rawRows = [];
-let chartInstance = null;
+let choicesCategory, choicesCity, choicesStatus;
 
-// Set Date in header
 document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
 
-// File Upload
 document.getElementById('fileInput').addEventListener('change', function (e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -18,8 +16,7 @@ function parseFile(file) {
 
   if (ext === 'csv') {
     Papa.parse(file, {
-      header: true,
-      skipEmptyLines: 'greedy',
+      header: true, skipEmptyLines: 'greedy',
       complete: (results) => handleParsed(results.data, results.meta.fields),
       error: (err) => setStatus('CSV parse error: ' + err.message, 'error')
     });
@@ -40,47 +37,50 @@ function parseFile(file) {
   }
 }
 
-// Make column matching forgiving (ignores spaces, underscores, and case)
+// Normalize headers (ignores spaces, underscores, case)
 function cleanKey(str) {
   return String(str).replace(/[\s_]/g, '').toLowerCase();
 }
 
 function handleParsed(rows, fields) {
-  if (!rows || rows.length === 0) {
-    setStatus('The uploaded file is empty.', 'error');
-    return;
-  }
+  if (!rows || rows.length === 0) { setStatus('The uploaded file is empty.', 'error'); return; }
 
-  // Map the actual file headers to our expected headers
   const map = {};
   fields.forEach(f => { map[cleanKey(f)] = f; });
 
-  const required = ['Category', 'City', 'Vendor_Name', 'Delivery_Location', 'PO_No', 'PO_Date', 'PO_Expiry', 'Status', 'PO_QTY'];
+  // Check required columns based on your actual data
+  const required = ['Category', 'City', 'Vendor Name', 'Del Location', 'PO No', 'PO Date', 'PO Expiry', 'Status', 'PO QTY', 'GRN QTY', 'Po Value', 'Po Volume In Kg', 'GRN Volume In Kg'];
   const missing = required.filter(req => !map[cleanKey(req)]);
 
   if (missing.length > 0) {
-    setStatus('Missing columns: ' + missing.join(', ') + '. Please check your file headers.', 'error');
+    setStatus('Missing columns: ' + missing.join(', ') + '. Please check headers.', 'error');
     return;
   }
 
-  // Normalize data
-  rawRows = rows.map(r => ({
-    Category: String(r[map['category']] || '').trim(),
-    City: String(r[map['city']] || '').trim(),
-    Vendor_Name: String(r[map['vendorname']] || '').trim(),
-    Delivery_Location: String(r[map['deliverylocation']] || '').trim(),
-    PO_No: String(r[map['pono']] || '').trim(),
-    PO_Date: normalizeDate(r[map['podate']]),
-    PO_Expiry: normalizeDate(r[map['poexpiry']]),
-    Appointment_Date: map['appointmentdate'] ? normalizeDate(r[map['appointmentdate']]) : '',
-    Status: String(r[map['status']] || '').trim(),
-    PO_QTY: Number(r[map['poqty']]) || 0
-  })).filter(r => r.PO_No && r.Category);
+  // Normalize and calculate
+  rawRows = rows.map(r => {
+    const getVal = (key) => r[map[cleanKey(key)]] !== undefined ? r[map[cleanKey(key)]] : '';
+    const getNum = (key) => Number(getVal(key)) || 0;
 
-  if (rawRows.length === 0) {
-    setStatus('No valid rows found. Check that PO_No and Category are populated.', 'error');
-    return;
-  }
+    return {
+      Category: String(getVal('Category')).trim(),
+      City: String(getVal('City')).trim(),
+      VendorName: String(getVal('Vendor Name')).trim(),
+      DelLocation: String(getVal('Del Location')).trim(),
+      PONo: String(getVal('PO No')).trim(),
+      PODate: normalizeDate(getVal('PO Date')),
+      POExpiry: normalizeDate(getVal('PO Expiry')),
+      ApptDate: normalizeDate(getVal('Appointment Date')),
+      Status: String(getVal('Status')).trim(),
+      POQty: getNum('PO QTY'),
+      GRNQty: getNum('GRN QTY'),
+      PoValue: getNum('Po Value'),
+      FillRate: getNum('Fill Rate'),
+      Month: String(getVal('Month')).trim(),
+      POTons: getNum('Po Volume In Kg') / 1000,
+      GRNTons: getNum('GRN Volume In Kg') / 1000
+    };
+  }).filter(r => r.PONo && r.Category);
 
   setStatus(`Successfully loaded ${rawRows.length} rows.`, 'success');
   initializeDashboard();
@@ -88,10 +88,16 @@ function handleParsed(rows, fields) {
 
 function normalizeDate(val) {
   if (!val) return '';
-  if (val instanceof Date) return val.toISOString().slice(0, 10);
   const s = String(val).trim();
   const d = new Date(s);
-  if (!isNaN(d.getTime()) && s.match(/\d/)) return d.toISOString().slice(0, 10);
+  if (!isNaN(d.getTime()) && s.match(/\d/)) {
+    // If Excel serial date (just a number)
+    if (/^\d+$/.test(s)) {
+        const date = new Date((Number(s) - 25569) * 86400 * 1000);
+        return date.toISOString().slice(0, 10);
+    }
+    return d.toISOString().slice(0, 10);
+  }
   return s;
 }
 
@@ -101,66 +107,70 @@ function setStatus(msg, cls) {
   el.className = 'status-msg ' + (cls || '');
 }
 
+// Initialize Dashboard & Multi-Selects
 function initializeDashboard() {
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('filterContainer').style.display = 'grid';
+  document.getElementById('filterSection').style.display = 'block';
   document.getElementById('kpiGrid').style.display = 'grid';
   document.getElementById('mainContent').style.display = 'block';
 
-  populateFilters();
+  const cats = [...new Set(rawRows.map(r => r.Category))].sort();
+  const cities = [...new Set(rawRows.map(r => r.City))].sort();
+  const statuses = [...new Set(rawRows.map(r => r.Status))].sort();
+
+  // Initialize Choices.js Multi-selects
+  const config = { removeItemButton: true, placeholder: true, placeholderValue: 'All', searchEnabled: true };
+  
+  if (choicesCategory) choicesCategory.destroy();
+  if (choicesCity) choicesCity.destroy();
+  if (choicesStatus) choicesStatus.destroy();
+
+  choicesCategory = new Choices('#filterCategory', { ...config, choices: cats.map(c => ({ value: c, label: c })) });
+  choicesCity = new Choices('#filterCity', { ...config, choices: cities.map(c => ({ value: c, label: c })) });
+  choicesStatus = new Choices('#filterStatus', { ...config, choices: statuses.map(s => ({ value: s, label: s })) });
+
+  // Add Event Listeners
+  document.getElementById('filterCategory').addEventListener('change', updateDashboard);
+  document.getElementById('filterCity').addEventListener('change', updateDashboard);
+  document.getElementById('filterStatus').addEventListener('change', updateDashboard);
+  document.getElementById('searchInput').addEventListener('input', updateDashboard);
+  
   updateDashboard();
 }
 
-function populateFilters() {
-  const cats = [...new Set(rawRows.map(r => r.Category))].sort();
-  const cities = [...new Set(rawRows.map(r => r.City))].sort();
-  const stats = [...new Set(rawRows.map(r => r.Status))].sort();
-
-  document.getElementById('filterCategory').innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
-  document.getElementById('filterCity').innerHTML = '<option value="">All Cities</option>' + cities.map(c => `<option value="${c}">${c}</option>`).join('');
-  document.getElementById('filterStatus').innerHTML = '<option value="">All Statuses</option>' + stats.map(s => `<option value="${s}">${s}</option>`).join('');
-}
-
-// Event Listeners for filters
-document.getElementById('filterCategory').addEventListener('change', updateDashboard);
-document.getElementById('filterCity').addEventListener('change', updateDashboard);
-document.getElementById('filterStatus').addEventListener('change', updateDashboard);
-document.getElementById('searchInput').addEventListener('input', updateDashboard);
+// Reset Filters
 document.getElementById('resetBtn').addEventListener('click', () => {
-  document.getElementById('filterCategory').value = '';
-  document.getElementById('filterCity').value = '';
-  document.getElementById('filterStatus').value = '';
+  choicesCategory.removeActiveItems();
+  choicesCity.removeActiveItems();
+  choicesStatus.removeActiveItems();
   document.getElementById('searchInput').value = '';
   updateDashboard();
 });
 
+// Update Main Logic
 function updateDashboard() {
-  const catFilter = document.getElementById('filterCategory').value;
-  const cityFilter = document.getElementById('filterCity').value;
-  const statusFilter = document.getElementById('filterStatus').value;
+  const selectedCats = choicesCategory.getValue(true);
+  const selectedCities = choicesCity.getValue(true);
+  const selectedStatuses = choicesStatus.getValue(true);
   const searchStr = document.getElementById('searchInput').value.toLowerCase();
 
-  // Apply Filters
   const filtered = rawRows.filter(r => {
-    if (catFilter && r.Category !== catFilter) return false;
-    if (cityFilter && r.City !== cityFilter) return false;
-    if (statusFilter && r.Status !== statusFilter) return false;
-    if (searchStr && !r.PO_No.toLowerCase().includes(searchStr) && !r.Vendor_Name.toLowerCase().includes(searchStr)) return false;
+    if (selectedCats.length > 0 && !selectedCats.includes(r.Category)) return false;
+    if (selectedCities.length > 0 && !selectedCities.includes(r.City)) return false;
+    if (selectedStatuses.length > 0 && !selectedStatuses.includes(r.Status)) return false;
+    if (searchStr && !r.PONo.toLowerCase().includes(searchStr) && !r.VendorName.toLowerCase().includes(searchStr)) return false;
     return true;
   });
 
   document.getElementById('rowCount').textContent = `${filtered.length} filtered rows`;
 
   // Update KPIs
-  const uniquePOs = new Set(filtered.map(r => r.PO_No)).size;
-  const totalQty = filtered.reduce((sum, r) => sum + r.PO_QTY, 0);
+  const uniquePOs = new Set(filtered.map(r => r.PONo)).size;
+  const totalQty = filtered.reduce((sum, r) => sum + r.POQty, 0);
   const openCount = filtered.filter(r => r.Status.toLowerCase() === 'open').length;
   const expiredCount = filtered.filter(r => r.Status.toLowerCase() === 'expired').length;
-  
-  // Expiring within 30 days
   const expiring = filtered.filter(r => {
-    if (!r.PO_Expiry) return false;
-    const days = Math.ceil((new Date(r.PO_Expiry) - new Date()) / (1000 * 60 * 60 * 24));
+    if (!r.POExpiry) return false;
+    const days = Math.ceil((new Date(r.POExpiry) - new Date()) / (1000 * 60 * 60 * 24));
     return days >= 0 && days <= 30 && r.Status !== 'Delivered' && r.Status !== 'Cancelled';
   }).length;
 
@@ -170,118 +180,123 @@ function updateDashboard() {
   document.getElementById('kpiExpired').textContent = expiredCount.toLocaleString();
   document.getElementById('kpiExpiring').textContent = expiring.toLocaleString();
 
-  // Update Table Title
-  let title = "PO Tracking — ";
-  if (catFilter && cityFilter) title += `${catFilter} in ${cityFilter}`;
-  else if (catFilter) title += catFilter;
-  else if (cityFilter) title += cityFilter;
-  else title += "Overview";
-  document.getElementById('viewTitle').textContent = title;
-
-  renderTable(filtered);
+  // Determine Phase and Render Table
+  if (selectedCats.length === 0 && selectedCities.length === 0) {
+    document.getElementById('viewTitle').textContent = "Phase 1: Overall Category Level";
+    renderPhase1(filtered);
+  } else if (selectedCats.length === 1 && selectedCities.length === 0) {
+    document.getElementById('viewTitle').textContent = `Phase 2: Category & City (${selectedCats[0]})`;
+    renderPhase2(filtered);
+  } else {
+    document.getElementById('viewTitle').textContent = "Phase 3: Detailed PO View";
+    renderPhase3(filtered);
+  }
 }
 
-function renderTable(data) {
-  const thead = document.getElementById('tableHead');
-  const tbody = document.getElementById('tableBody');
-
-  // Dynamically change columns based on drill-down level
-  const catFilter = document.getElementById('filterCategory').value;
-  const cityFilter = document.getElementById('filterCity').value;
-
-  let cols = [];
-  if (!catFilter && !cityFilter) {
-    // Phase 1: Overall
-    cols = ['Category', 'Total POs', 'Total PO QTY', 'Open', 'Expired'];
-  } else if (catFilter && !cityFilter) {
-    // Phase 2: Category + City
-    cols = ['City', 'Total POs', 'Total PO QTY', 'Open', 'Expired'];
-  } else {
-    // Phase 3: Detailed Lines
-    cols = ['Vendor Name', 'Delivery Location', 'PO No', 'PO Date', 'PO Expiry', 'Appointment Date', 'Status', 'PO QTY'];
-  }
-
-  thead.innerHTML = `<tr>${cols.map(c => `<th>${c.toUpperCase()}</th>`).join('')}</tr>`;
-
-  if (data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center; padding: 2rem;">No data matches your filters.</td></tr>`;
-    return;
-  }
+// PHASE 1: Category | PO | GRN
+function renderPhase1(data) {
+  const cols = ['Category', 'PO (Qty)', 'GRN (Qty)'];
+  document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+  
+  const groups = {};
+  data.forEach(r => {
+    if (!groups[r.Category]) groups[r.Category] = { po: 0, grn: 0 };
+    groups[r.Category].po += r.POQty;
+    groups[r.Category].grn += r.GRNQty;
+  });
 
   let html = '';
-
-  // Aggregate logic depending on view
-  if (!catFilter && !cityFilter) {
-    const groups = {};
-    data.forEach(r => {
-      if (!groups[r.Category]) groups[r.Category] = [];
-      groups[r.Category].push(r);
-    });
-    Object.keys(groups).sort().forEach(cat => {
-      const rows = groups[cat];
-      const pos = new Set(rows.map(r => r.PO_No)).size;
-      const qty = rows.reduce((s, r) => s + r.PO_QTY, 0);
-      const open = rows.filter(r => r.Status.toLowerCase() === 'open').length;
-      const exp = rows.filter(r => r.Status.toLowerCase() === 'expired').length;
-      html += `<tr>
-        <td><strong>${cat}</strong></td>
-        <td>${pos}</td>
-        <td>${qty.toLocaleString()}</td>
-        <td>${open}</td>
-        <td>${exp}</td>
-      </tr>`;
-    });
-  } else if (catFilter && !cityFilter) {
-    const groups = {};
-    data.forEach(r => {
-      if (!groups[r.City]) groups[r.City] = [];
-      groups[r.City].push(r);
-    });
-    Object.keys(groups).sort().forEach(city => {
-      const rows = groups[city];
-      const pos = new Set(rows.map(r => r.PO_No)).size;
-      const qty = rows.reduce((s, r) => s + r.PO_QTY, 0);
-      const open = rows.filter(r => r.Status.toLowerCase() === 'open').length;
-      const exp = rows.filter(r => r.Status.toLowerCase() === 'expired').length;
-      html += `<tr>
-        <td><strong>${city}</strong></td>
-        <td>${pos}</td>
-        <td>${qty.toLocaleString()}</td>
-        <td>${open}</td>
-        <td>${exp}</td>
-      </tr>`;
-    });
-  } else {
-    // Detailed View (Aggregated by PO)
-    const poMap = new Map();
-    data.forEach(r => {
-      if (!poMap.has(r.PO_No)) poMap.set(r.PO_No, { ...r, PO_QTY: 0 });
-      poMap.get(r.PO_No).PO_QTY += r.PO_QTY;
-    });
-
-    Array.from(poMap.values()).forEach(r => {
-      let badgeClass = 'badge-delivered';
-      if (r.Status.toLowerCase() === 'open') badgeClass = 'badge-open';
-      else if (r.Status.toLowerCase() === 'expired') badgeClass = 'badge-expired';
-      else if (r.Status.toLowerCase() === 'in transit') badgeClass = 'badge-transit';
-
-      html += `<tr>
-        <td>${r.Vendor_Name}</td>
-        <td>${r.Delivery_Location}</td>
-        <td><strong>${r.PO_No}</strong></td>
-        <td>${r.PO_Date || '—'}</td>
-        <td>${r.PO_Expiry || '—'}</td>
-        <td>${r.Appointment_Date || '—'}</td>
-        <td><span class="badge ${badgeClass}">${r.Status}</span></td>
-        <td><strong>${r.PO_QTY.toLocaleString()}</strong></td>
-      </tr>`;
-    });
-  }
-
-  tbody.innerHTML = html;
+  Object.keys(groups).sort().forEach(cat => {
+    html += `<tr>
+      <td><strong>${cat}</strong></td>
+      <td>${groups[cat].po.toLocaleString()}</td>
+      <td>${groups[cat].grn.toLocaleString()}</td>
+    </tr>`;
+  });
+  document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="3" style="text-align:center;">No data</td></tr>`;
 }
 
-// Export Function
+// PHASE 2: Category | City | PO Tons | GRN Tons | Fill Rate | Open Po | EXPIRED | CANCELLED
+function renderPhase2(data) {
+  const cols = ['Category', 'City', 'PO Tons', 'GRN Tons', 'Fill Rate %', 'Open Po', 'EXPIRED', 'CANCELLED'];
+  document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+  
+  const groups = {};
+  data.forEach(r => {
+    const key = r.Category + '|' + r.City;
+    if (!groups[key]) groups[key] = { cat: r.Category, city: r.City, poT: 0, grnT: 0, poQty: 0, grnQty: 0, open: 0, exp: 0, can: 0 };
+    groups[key].poT += r.POTons;
+    groups[key].grnT += r.GRNTons;
+    groups[key].poQty += r.POQty;
+    groups[key].grnQty += r.GRNQty;
+    if (r.Status.toLowerCase() === 'open') groups[key].open++;
+    if (r.Status.toLowerCase() === 'expired') groups[key].exp++;
+    if (r.Status.toLowerCase() === 'cancelled') groups[key].can++;
+  });
+
+  let html = '';
+  Object.values(groups).sort((a,b) => b.poT - a.poT).forEach(g => {
+    const fillRate = g.poQty > 0 ? ((g.grnQty / g.poQty) * 100).toFixed(1) : '0.0';
+    html += `<tr>
+      <td><strong>${g.cat}</strong></td>
+      <td>${g.city}</td>
+      <td>${g.poT.toFixed(2)}</td>
+      <td>${g.grnT.toFixed(2)}</td>
+      <td>${fillRate}%</td>
+      <td>${g.open}</td>
+      <td style="color:#dc2626; font-weight:600;">${g.exp}</td>
+      <td style="color:#64748b; font-weight:600;">${g.can}</td>
+    </tr>`;
+  });
+  document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="8" style="text-align:center;">No data</td></tr>`;
+}
+
+// PHASE 3: Vendor Name | Del Location | PO No | PO Date | PO Expiry | Appointment Date | Status | Sum of PO QTY | Sum of Po Value | Sum of GRN QTY | Fill rate | Month
+function renderPhase3(data) {
+  const cols = ['Vendor Name', 'Del Location', 'PO No', 'PO Date', 'PO Expiry', 'Appointment Date', 'Status', 'Sum of PO QTY', 'Sum of Po Value', 'Sum of GRN QTY', 'Fill rate', 'Month'];
+  document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+  
+  // Group by PO No
+  const poMap = {};
+  data.forEach(r => {
+    if (!poMap[r.PONo]) {
+      poMap[r.PONo] = { ...r, POQty: 0, PoValue: 0, GRNQty: 0, count: 0 };
+    }
+    poMap[r.PONo].POQty += r.POQty;
+    poMap[r.PONo].PoValue += r.PoValue;
+    poMap[r.PONo].GRNQty += r.GRNQty;
+    poMap[r.PONo].count++;
+  });
+
+  let html = '';
+  Object.values(poMap).sort((a,b) => new Date(b.PODate) - new Date(a.PODate)).forEach(r => {
+    const fillRate = r.POQty > 0 ? ((r.GRNQty / r.POQty) * 100).toFixed(1) : '0.0';
+    
+    // Status Badge Color
+    let badgeClass = 'background:#f1f5f9; color:#475569;'; // default
+    if (r.Status.toLowerCase() === 'open') badgeClass = 'background:#dcfce7; color:#166534;';
+    else if (r.Status.toLowerCase() === 'expired') badgeClass = 'background:#fee2e2; color:#991b1b;';
+    else if (r.Status.toLowerCase() === 'cancelled') badgeClass = 'background:#f3f4f6; color:#374151;';
+
+    html += `<tr>
+      <td>${r.VendorName}</td>
+      <td>${r.DelLocation}</td>
+      <td><strong>${r.PONo}</strong></td>
+      <td>${r.PODate}</td>
+      <td>${r.POExpiry}</td>
+      <td>${r.ApptDate}</td>
+      <td><span style="padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600; ${badgeClass}">${r.Status}</span></td>
+      <td><strong>${r.POQty.toLocaleString()}</strong></td>
+      <td>${r.PoValue.toLocaleString()}</td>
+      <td>${r.GRNQty.toLocaleString()}</td>
+      <td>${fillRate}%</td>
+      <td>${r.Month}</td>
+    </tr>`;
+  });
+  document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="12" style="text-align:center;">No data</td></tr>`;
+}
+
+// Export CSV
 document.getElementById('exportBtn').addEventListener('click', () => {
   const table = document.getElementById('dataTable');
   if (!table || table.rows.length <= 1) { alert('No data to export.'); return; }
