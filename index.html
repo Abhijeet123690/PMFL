@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PO Tracking Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- PapaParse for CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- SheetJS for Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Chart.js for Phase 1 chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>PO Tracking Dashboard</h1>
+    <div class="upload-area">
+      <label for="fileInput" class="upload-btn">Upload Data (CSV / Excel / JSON)</label>
+      <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.json" hidden>
+      <span id="statusMsg" class="status-msg"></span>
+    </div>
+  </header>
+
+  <nav id="breadcrumb" class="breadcrumb"></nav>
+
+  <!-- Phase 1: Overall Category Level -->
+  <section id="phase1" class="phase active">
+    <div class="kpi-row" id="kpiCards"></div>
+    <div class="chart-container">
+      <canvas id="categoryChart"></canvas>
+    </div>
+    <table id="categoryTable">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Distinct POs</th>
+          <th>Total PO QTY</th>
+          <th>Open</th>
+          <th>Delivered</th>
+          <th>Expired</th>
+          <th>% Expiring (30d)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- Phase 2: Category + City -->
+  <section id="phase2" class="phase">
+    <h2 id="phase2Title"></h2>
+    <table id="cityTable">
+      <thead>
+        <tr>
+          <th>City</th>
+          <th>Distinct POs</th>
+          <th>Total PO QTY</th>
+          <th>Open</th>
+          <th>Expired</th>
+          <th>Nearest Expiry</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- Phase 3: Detailed PO Lines -->
+  <section id="phase3" class="phase">
+    <h2 id="phase3Title"></h2>
+    <div class="filter-row">
+      <label>Status filter:
+        <select id="statusFilter">
+          <option value="">All</option>
+          <option value="Open">Open</option>
+          <option value="In Transit">In Transit</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Expired">Expired</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </label>
+      <button id="exportBtn" class="export-btn">Download filtered CSV</button>
+    </div>
+    <table id="detailTable">
+      <thead>
+        <tr>
+          <th data-sort="Vendor_Name">Vendor Name</th>
+          <th data-sort="Delivery_Location">Delivery Location</th>
+          <th data-sort="PO_No">PO No</th>
+          <th data-sort="PO_Date">PO Date</th>
+          <th data-sort="PO_Expiry">PO Expiry</th>
+          <th data-sort="Appointment_Date">Appointment Date</th>
+          <th data-sort="Status">Status</th>
+          <th data-sort="PO_QTY">Sum of PO QTY</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <footer>
+    <p>Client-side PO tracker. Data never leaves your browser until you upload it.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
