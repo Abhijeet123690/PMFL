@@ -3,103 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PO Tracking Dashboard</title>
+  <title>PO Tracking Live Dashboard</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- PapaParse for CSV -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <!-- SheetJS for Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Chart.js for Phase 1 chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
+
+  <!-- Top Navbar -->
   <header>
-    <h1>PO Tracking Dashboard</h1>
-    <div class="upload-area">
-      <label for="fileInput" class="upload-btn">Upload Data (CSV / Excel / JSON)</label>
-      <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.json" hidden>
-      <span id="statusMsg" class="status-msg"></span>
+    <div class="header-left">
+      <h1>PO TRACKER <span class="live-dot"></span> LIVE TRACKER</h1>
+    </div>
+    <div class="header-right">
+      <span id="currentDate"></span>
     </div>
   </header>
 
-  <nav id="breadcrumb" class="breadcrumb"></nav>
-
-  <!-- Phase 1: Overall Category Level -->
-  <section id="phase1" class="phase active">
-    <div class="kpi-row" id="kpiCards"></div>
-    <div class="chart-container">
-      <canvas id="categoryChart"></canvas>
+  <!-- Upload Section -->
+  <div class="container">
+    <div class="card upload-section">
+      <h2>Upload Latest Reports</h2>
+      <div class="upload-grid">
+        <div class="upload-box">
+          <h3>PO Data Dump (Excel / CSV)</h3>
+          <div class="upload-controls">
+            <label for="fileInput" class="btn-upload">Choose File</label>
+            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" hidden>
+            <span id="fileName" class="file-name">No file chosen</span>
+          </div>
+          <p id="statusMsg" class="status-msg"></p>
+        </div>
+      </div>
     </div>
-    <table id="categoryTable">
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th>Distinct POs</th>
-          <th>Total PO QTY</th>
-          <th>Open</th>
-          <th>Delivered</th>
-          <th>Expired</th>
-          <th>% Expiring (30d)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </section>
 
-  <!-- Phase 2: Category + City -->
-  <section id="phase2" class="phase">
-    <h2 id="phase2Title"></h2>
-    <table id="cityTable">
-      <thead>
-        <tr>
-          <th>City</th>
-          <th>Distinct POs</th>
-          <th>Total PO QTY</th>
-          <th>Open</th>
-          <th>Expired</th>
-          <th>Nearest Expiry</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </section>
-
-  <!-- Phase 3: Detailed PO Lines -->
-  <section id="phase3" class="phase">
-    <h2 id="phase3Title"></h2>
-    <div class="filter-row">
-      <label>Status filter:
-        <select id="statusFilter">
-          <option value="">All</option>
-          <option value="Open">Open</option>
-          <option value="In Transit">In Transit</option>
-          <option value="Delivered">Delivered</option>
-          <option value="Expired">Expired</option>
-          <option value="Cancelled">Cancelled</option>
-        </select>
-      </label>
-      <button id="exportBtn" class="export-btn">Download filtered CSV</button>
+    <!-- Filter Bar (Like GETAWAY) -->
+    <div class="card filter-section">
+      <div class="filter-grid" id="filterContainer" style="display:none;">
+        <div>
+          <label>CATEGORY</label>
+          <select id="filterCategory"><option value="">All Categories</option></select>
+        </div>
+        <div>
+          <label>CITY</label>
+          <select id="filterCity"><option value="">All Cities</option></select>
+        </div>
+        <div>
+          <label>STATUS</label>
+          <select id="filterStatus"><option value="">All Statuses</option></select>
+        </div>
+        <div>
+          <label>SEARCH</label>
+          <input type="text" id="searchInput" placeholder="Search PO / Vendor...">
+        </div>
+        <div class="filter-actions">
+          <button id="resetBtn" class="btn-reset">Reset Filters</button>
+          <button id="exportBtn" class="btn-export">Export Excel</button>
+        </div>
+      </div>
+      <div id="emptyState" style="color:#64748b; font-size: 0.9rem;">No report uploaded. Please choose a file above.</div>
     </div>
-    <table id="detailTable">
-      <thead>
-        <tr>
-          <th data-sort="Vendor_Name">Vendor Name</th>
-          <th data-sort="Delivery_Location">Delivery Location</th>
-          <th data-sort="PO_No">PO No</th>
-          <th data-sort="PO_Date">PO Date</th>
-          <th data-sort="PO_Expiry">PO Expiry</th>
-          <th data-sort="Appointment_Date">Appointment Date</th>
-          <th data-sort="Status">Status</th>
-          <th data-sort="PO_QTY">Sum of PO QTY</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </section>
 
-  <footer>
-    <p>Client-side PO tracker. Data never leaves your browser until you upload it.</p>
-  </footer>
+    <!-- KPI Cards (Like GETAWAY) -->
+    <div class="kpi-grid" id="kpiGrid" style="display:none;">
+      <div class="kpi-card">
+        <div class="kpi-label">TOTAL POs</div>
+        <div class="kpi-value" id="kpiTotalPOs">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">TOTAL QTY</div>
+        <div class="kpi-value" id="kpiTotalQty">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">OPEN POs</div>
+        <div class="kpi-value" id="kpiOpen">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">EXPIRED</div>
+        <div class="kpi-value" id="kpiExpired" style="color: #dc2626;">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">EXPIRING ≤ 30D</div>
+        <div class="kpi-value" id="kpiExpiring" style="color: #d97706;">0</div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="card main-content" id="mainContent" style="display:none;">
+      <div class="card-header">
+        <h2 id="viewTitle">PO Tracking — Overview</h2>
+        <span id="rowCount" style="font-size: 0.85rem; color: #64748b;">0 filtered rows</span>
+      </div>
+      
+      <div class="table-responsive">
+        <table id="dataTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
