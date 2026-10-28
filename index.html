@@ -1,600 +1,1482 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GETAWAY Live Tracker (Clone)</title>
-  
-  <!-- Choices.js for Multi-Select Dropdowns -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-  
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-    body { background-color: #f4f6f8; color: #1e293b; padding-bottom: 2rem; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PO MIS Dashboard — Overall + 4 Platforms</title>
 
-    /* Header / Navbar */
-    .navbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; height: 60px; }
-    .navbar-brand { font-size: 1.1rem; font-weight: 800; color: #1a5c3a; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
-    .live-dot { width: 8px; height: 8px; background-color: #16a34a; border-radius: 50%; display: inline-block; }
-    .navbar-date { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-    /* Navigation Tabs */
-    .nav-tabs { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 2rem; display: flex; gap: 2rem; overflow-x: auto; }
-    .nav-tab { padding: 1rem 0; font-size: 0.9rem; font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; }
-    .nav-tab:hover { color: #1e293b; }
-    .nav-tab.active { color: #1a5c3a; border-bottom-color: #1a5c3a; }
+<style>
+:root {
+  --green: #1e5b3a;
+  --green-light: #2e7d4f;
+  --bg: #f0f4f1;
+  --card: #ffffff;
+  --muted: #667085;
+  --border: #e2e8e4;
+  --danger: #b42318;
+  --warn: #b54708;
+  --info: #175cd3;
+  --radius: 12px;
+  --shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
+}
 
-    /* Main Container */
-    .container { max-width: 1300px; margin: 1.5rem auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 1.5rem; }
-    .card { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+* { box-sizing: border-box; }
 
-    /* Upload Section */
-    .upload-header { font-size: 1.1rem; font-weight: 700; color: #1a5c3a; margin-bottom: 1rem; }
-    .upload-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-    .upload-box { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 1.5rem; background: #fff; }
-    .upload-box h3 { font-size: 0.95rem; color: #334155; margin-bottom: 1rem; font-weight: 700; }
-    .upload-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;}
-    .btn-upload { background: #fff; border: 1px solid #cbd5e1; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-weight: 600; color: #334155; }
-    .btn-upload:hover { background: #f8fafc; }
-    .file-name { font-size: 0.85rem; color: #64748b; }
-    .status-msg { font-size: 0.8rem; font-weight: 500; margin-top: 0.5rem; }
-    .status-msg.error { color: #dc2626; }
-    .status-msg.success { color: #16a34a; }
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  color: #1d2939;
+  font-size: 14px;
+}
 
-    /* Filter Bar */
-    .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: end; }
-    .filter-item label { display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;}
-    .search-box input { width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; outline: none; }
-    .search-box input:focus { border-color: #1a5c3a; }
-    .filter-actions { display: flex; gap: 0.5rem; }
-    .btn-action-req { padding: 0.6rem 1rem; border: 1px solid #fecaca; background: #fef2f2; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #dc2626; height: 38px; display: flex; align-items: center; gap: 5px; }
-    .btn-reset { padding: 0.6rem 1rem; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #0f172a; height: 38px;}
-    .btn-export { padding: 0.6rem 1rem; border: none; background: #1a5c3a; color: #fff; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; height: 38px;}
-    .btn-export:hover { background: #144a2e; }
+button, input, select { font: inherit; }
 
-    /* KPI Cards */
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
-    .kpi-card { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 1.25rem; }
-    .kpi-label { font-size: 0.65rem; font-weight: 800; color: #64748b; margin-bottom: 0.5rem; letter-spacing: 0.5px; text-transform: uppercase; }
-    .kpi-value { font-size: 1.6rem; font-weight: 700; color: #0f172a; }
+/* ---------- Top navigation ---------- */
+.topbar {
+  background: var(--green);
+  color: #fff;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.brand { font-weight: 800; font-size: 17px; padding: 16px 0; white-space: nowrap; }
+.brand small { font-weight: 400; opacity: .8; font-size: 11px; display: block; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tab {
+  background: transparent;
+  color: #d7e8dd;
+  border: 0;
+  padding: 17px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+.tab:hover { color: #fff; background: rgba(255,255,255,.06); }
+.tab.active { color: #fff; border-bottom-color: #a8e6c0; background: rgba(255,255,255,.10); }
 
-    /* Table */
-    .card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1rem; }
-    .card-header h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
-    .table-responsive { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
-    th { background: #f8fafc; padding: 0.85rem 1rem; font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0;}
-    td { padding: 0.85rem 1rem; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; color: #334155; }
-    tbody tr:hover { background-color: #f8fafc; }
+/* ---------- Layout ---------- */
+main { max-width: 1480px; margin: 20px auto 60px; padding: 0 18px; }
 
-    /* Choices.js Override */
-    .choices__inner { border-radius: 6px; border: 1px solid #cbd5e1; min-height: 38px; padding: 4px 8px; font-size: 0.85rem; background: #fff; }
-    .choices__list--multiple .choices__item { background-color: #1a5c3a; border: 1px solid #1a5c3a; border-radius: 4px; font-size: 0.75rem; padding: 2px 6px; }
-  </style>
+.panel {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.panel h2 { margin: 0 0 6px; font-size: 17px; }
+.note { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin: 4px 0 12px; }
+
+/* ---------- KPI ---------- */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.kpi {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+.kpi .label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.kpi .value { font-size: 24px; font-weight: 800; color: var(--green); overflow-wrap: anywhere; }
+.kpi .sub { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+
+/* ---------- Charts ---------- */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.chart-box { height: 320px; position: relative; }
+
+/* ---------- Upload / dropzone ---------- */
+.dropzone {
+  border: 2px dashed #b9cdc0;
+  border-radius: var(--radius);
+  padding: 26px;
+  text-align: center;
+  background: #fafcfb;
+  cursor: pointer;
+  transition: .15s;
+}
+.dropzone.dragover { background: #eaf6ef; border-color: var(--green); }
+.dropzone strong { color: var(--green); }
+.dropzone input { display: none; }
+
+.file-summary {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ---------- Mapping ---------- */
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.map-item label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.map-item select { width: 100%; padding: 8px; border: 1px solid #cfd8d2; border-radius: 7px; background: #fff; }
+
+/* ---------- Filters ---------- */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.filter label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+.filter select, .filter input {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #cfd8d2;
+  border-radius: 7px;
+  background: #fff;
+}
+.filter-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+/* ---------- Buttons ---------- */
+button.primary {
+  background: var(--green);
+  color: #fff;
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+button.ghost {
+  background: #fff;
+  color: var(--green);
+  border: 1px solid var(--green);
+  border-radius: 7px;
+  padding: 9px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+button.danger { background: var(--danger); color: #fff; border: 0; border-radius: 7px; padding: 9px 14px; font-weight: 700; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- Status / warnings ---------- */
+.status {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f7faf8;
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  line-height: 1.55;
+  margin-top: 12px;
+}
+.warn-list { margin: 8px 0 0; padding-left: 18px; color: var(--warn); font-size: 12.5px; }
+.warn-list li { margin-bottom: 3px; }
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.pill.ok { background: #e7f6ec; color: #1a7f43; }
+.pill.warn { background: #fef0c7; color: #b54708; }
+.pill.bad { background: #fee4e2; color: #b42318; }
+.pill.info { background: #e8f0fe; color: #175cd3; }
+
+/* ---------- Table ---------- */
+.table-wrap { overflow: auto; max-height: 600px; margin-top: 12px; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 1050px; }
+th, td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+th {
+  background: var(--green);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+th:hover { background: var(--green-light); }
+td.num, th.num { text-align: right; }
+tbody tr:nth-child(even) { background: #f8fbf9; }
+tbody tr:hover { background: #eef7f1; }
+.empty { text-align: center; color: var(--muted); padding: 24px; }
+
+/* ---------- Pagination ---------- */
+.pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; font-size: 12.5px; }
+.pager button { padding: 6px 10px; border-radius: 6px; border: 1px solid #cfd8d2; background: #fff; cursor: pointer; }
+.pager button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .chart-grid { grid-template-columns: 1fr; }
+  .brand { padding: 12px 0; }
+  .tab { padding: 14px 10px; font-size: 13px; }
+}
+@media (max-width: 560px) {
+  body { font-size: 13px; }
+  main { padding: 0 10px; }
+  .panel { padding: 14px; }
+  .kpi .value { font-size: 20px; }
+}
+</style>
 </head>
 <body>
 
-  <!-- Top Navbar -->
-  <div class="navbar">
-    <div class="navbar-brand">
-      GETAWAY <span class="live-dot"></span> LIVE TRACKER
-    </div>
-    <div class="navbar-date" id="currentDate"></div>
+<!-- ================= TOP NAVIGATION ================= -->
+<nav class="topbar">
+  <div class="brand">PO MIS<small>Purchase Order Control Tower</small></div>
+  <div class="tabs" id="topTabs">
+    <button class="tab active" data-tab="overall">Overall</button>
+    <button class="tab" data-tab="swiggy">Swiggy</button>
+    <button class="tab" data-tab="zepto">Zepto</button>
+    <button class="tab" data-tab="blinkit">Blinkit</button>
+    <button class="tab" data-tab="amazon">Amazon</button>
   </div>
+</nav>
 
-  <!-- Platform Tabs -->
-  <div class="nav-tabs" id="platformTabs" style="display:none;">
-    <!-- Injected via JS -->
-  </div>
+<main>
 
-  <div class="container">
-    <!-- Upload Section -->
-    <div class="card">
-      <div class="upload-header">Upload Latest Reports</div>
-      <div class="upload-grid">
-        <div class="upload-box">
-          <h3>PO Data Dumps</h3>
-          <div class="upload-controls">
-            <label for="poInput" class="btn-upload">Choose File(s)</label>
-            <input type="file" id="poInput" accept=".csv,.xlsx,.xls" multiple hidden>
-            <span id="poFileName" class="file-name">No file chosen</span>
-          </div>
-          <p id="poStatus" class="status-msg">No PO file uploaded.</p>
-          <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Hold CTRL or SHIFT to select multiple platforms at once.</p>
-        </div>
-      </div>
+  <!-- ================= OVERALL TAB ================= -->
+  <section id="tab-overall" class="tab-pane">
+    <div class="panel">
+      <h2>Overall consolidated MIS</h2>
+      <p class="note">
+        Automatically consolidates accepted records from Swiggy, Zepto, Blinkit, and Amazon.
+        Duplicate key: <b>platform + PO Number + SKU + Expiry Date</b>.
+        Expired = expiry date is before today <i>and</i> status is neither Delivered nor Cancelled.
+      </p>
+      <div id="overallPlatformSummary" class="file-summary"></div>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="card" id="filterSection" style="display:none;">
-      <div class="filter-grid">
-        <div class="filter-item">
-          <label>CATEGORY</label>
-          <select id="filterCategory" multiple></select>
-        </div>
-        <div class="filter-item">
-          <label>CITY</label>
-          <select id="filterCity" multiple></select>
-        </div>
-        <div class="filter-item">
-          <label>STATUS</label>
-          <select id="filterStatus" multiple></select>
-        </div>
-        <div class="filter-item search-box">
-          <label>SEARCH</label>
-          <input type="text" id="searchInput" placeholder="Search city / SKU / ID">
-        </div>
-        <div class="filter-actions">
-          <button id="exportBtn" class="btn-export">Export Excel</button>
-        </div>
-      </div>
+    <div class="kpis" id="overallKpis"></div>
+
+    <div class="chart-grid">
+      <div class="panel"><h2>Platform-wise PO vs GRN (tons)</h2><div class="chart-box"><canvas id="chartPlatform"></canvas></div></div>
+      <div class="panel"><h2>Status distribution</h2><div class="chart-box"><canvas id="chartStatus"></canvas></div></div>
+      <div class="panel"><h2>City-wise fill rate</h2><div class="chart-box"><canvas id="chartCity"></canvas></div></div>
+      <div class="panel"><h2>Category-wise open PO (tons)</h2><div class="chart-box"><canvas id="chartCategory"></canvas></div></div>
     </div>
 
-    <!-- KPI Cards -->
-    <div class="kpi-grid" id="kpiGrid" style="display:none;">
-      <div class="kpi-card">
-        <div class="kpi-label">TOTAL POs</div>
-        <div class="kpi-value" id="kpiTotalPOs">0</div>
+    <div class="panel">
+      <h2>Consolidated PO records</h2>
+      <div class="filters">
+        <div class="filter"><label>Platform</label><select id="ovPlatform"><option>All</option></select></div>
+        <div class="filter"><label>City</label><select id="ovCity"><option>All</option></select></div>
+        <div class="filter"><label>Category</label><select id="ovCategory"><option>All</option></select></div>
+        <div class="filter"><label>Status</label><select id="ovStatus"><option>All</option></select></div>
+        <div class="filter"><label>PO date from</label><input type="date" id="ovFrom"></div>
+        <div class="filter"><label>PO date to</label><input type="date" id="ovTo"></div>
+        <div class="filter"><label>Search</label><input id="ovSearch" placeholder="PO, SKU, product, city…"></div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-label">TOTAL QTY</div>
-        <div class="kpi-value" id="kpiTotalQty">0</div>
+      <div class="filter-actions">
+        <button class="ghost" onclick="resetOverallFilters()">Reset filters</button>
+        <button class="ghost" onclick="exportTable('overall', 'csv')">Export CSV</button>
+        <button class="ghost" onclick="exportTable('overall', 'xlsx')">Export Excel</button>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-label">OPEN POs</div>
-        <div class="kpi-value" id="kpiOpen">0</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">EXPIRED</div>
-        <div class="kpi-value" id="kpiExpired" style="color: #dc2626;">0</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">AVG FILL RATE</div>
-        <div class="kpi-value" id="kpiFillRate">0%</div>
-      </div>
+      <div class="table-wrap"><table id="ovTable"></table></div>
+      <div class="pager" id="ovPager"></div>
     </div>
+  </section>
 
-    <!-- Main Content Table -->
-    <div class="card" id="mainContent" style="display:none;">
-      <div class="card-header">
-        <h2 id="viewTitle">Q-Com Availability — Overview</h2>
-        <span id="rowCount" style="font-size: 0.85rem; color: #64748b;">0 filtered rows</span>
-      </div>
-      
-      <div class="table-responsive">
-        <table id="dataTable">
-          <thead id="tableHead"></thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  <!-- ================= PLATFORM TAB PANES (generated by JS) ================= -->
+  <section id="tab-platform" class="tab-pane" style="display:none"></section>
 
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-  
-  <script>
-    // --- Global Variables ---
-    let rawPOData = [];
-    let choicesCategory, choicesCity, choicesStatus;
-    let currentPlatform = 'Overall';
-    const today = new Date();
-    today.setHours(0,0,0,0); 
+</main>
 
-    document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+<script>
+/* =========================================================================
+   1. CONFIG
+   ========================================================================= */
+const PLATFORMS = ['swiggy', 'zepto', 'blinkit', 'amazon'];
+const PLATFORM_LABELS = { swiggy: 'Swiggy', zepto: 'Zepto', blinkit: 'Blinkit', amazon: 'Amazon' };
 
-    // --- File Upload Logic ---
-    document.getElementById('poInput').addEventListener('change', function(e) {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
-      
-      document.getElementById('poFileName').textContent = `${files.length} file(s) selected`;
-      setStatus('poStatus', 'Processing files...', '');
-      
-      let filesProcessed = 0;
-      let totalRowsLoaded = 0;
-      
-      Array.from(files).forEach(file => {
-        // Detect platform from filename
-        let platform = 'Other';
-        const fname = file.name.toLowerCase();
-        if (fname.includes('blinkit')) platform = 'Blinkit';
-        else if (fname.includes('amazon')) platform = 'Amazon';
-        else if (fname.includes('swiggy')) platform = 'Swiggy';
-        else if (fname.includes('zepto')) platform = 'Zepto';
-        else if (fname.includes('flipkart')) platform = 'Flipkart';
-        
-        parseFile(file, platform, (rowsLoaded) => {
-          totalRowsLoaded += rowsLoaded;
-          filesProcessed++;
-          if (filesProcessed === files.length) {
-            setStatus('poStatus', `Successfully processed ${totalRowsLoaded} PO lines across ${files.length} files.`, 'success');
-            checkReady();
-          }
-        });
-      });
-    });
+const TON_CONVERSIONS = {
+  kg: 0.001,
+  ton: 1,
+  tonne: 1,
+  mt: 1,
+  g: 0.000001,
+  lb: 0.000453592,
+  box: 1,      // default; user can override via "Treat raw quantity as"
+  case: 1,
+  piece: 1,
+  pcs: 1,
+  ea: 1
+};
 
-    function parseFile(file, platform, callback) {
-      const ext = file.name.split('.').pop().toLowerCase();
-      
-      const processData = (data) => {
-        const count = handlePOData(data, platform);
-        if (callback) callback(count);
-      };
+const FIELD_ALIASES = {
+  poNumber:    ['po number','ponumber','po no','pono','purchase order','po id','po#'],
+  poDate:      ['po date','podate','order date','created date','po creation date','creation date'],
+  expiryDate:  ['expiry date','expirydate','exp date','expdate','valid till','best before'],
+  status:      ['status','po status','order status','state'],
+  city:        ['city','location','delivery city','ship to city'],
+  category:    ['category','product category','cat'],
+  sku:         ['sku','sku code','item code','product code','platform sku','material code'],
+  product:     ['product','product name','item name','description','product title'],
+  poQty:       ['po quantity','po qty','order quantity','ordered qty','po qty.','quantity'],
+  grnQty:      ['grn quantity','grn qty','received quantity','received qty','grn qty.'],
+  unit:        ['unit','uom','unit of measure','measure'],
+  vendor:      ['vendor','supplier','brand','vendor name'],
+  lineItem:    ['line item','lineitem','line no','item no']
+};
 
-      if (ext === 'csv') {
-        Papa.parse(file, {
-          header: true, skipEmptyLines: 'greedy',
-          complete: (results) => processData(results.data),
-          error: (err) => setStatus('poStatus', 'CSV Error: ' + err.message, 'error')
-        });
-      } else if (ext === 'xlsx' || ext === 'xls') {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          try {
-            const wb = XLSX.read(ev.target.result, { type: 'array' });
-            const ws = wb.Sheets[wb.SheetNames[0]];
-            const data = XLSX.utils.sheet_to_json(ws);
-            processData(data);
-          } catch (err) {
-            setStatus('poStatus', 'Excel Error: ' + err.message, 'error');
-          }
-        };
-        reader.readAsArrayBuffer(file);
+/* =========================================================================
+   2. STATE
+   ========================================================================= */
+const state = {
+  activeTab: 'overall',
+  platforms: {
+    swiggy:  { rows: [], fileName: '', importedAt: null, mapping: {}, unitMode: 'auto', replaceOnNext: false },
+    zepto:   { rows: [], fileName: '', importedAt: null, mapping: {}, unitMode: 'auto', replaceOnNext: false },
+    blinkit: { rows: [], fileName: '', importedAt: null, mapping: {}, unitMode: 'auto', replaceOnNext: false },
+    amazon:  { rows: [], fileName: '', importedAt: null, mapping: {}, unitMode: 'auto', replaceOnNext: false }
+  },
+  skuMaster: [],   // [{ platformSku, commonSku, productName }]
+  overall: {
+    filters: { platform: 'All', city: 'All', category: 'All', status: 'All', from: '', to: '', search: '' },
+    page: 1,
+    pageSize: 50,
+    sortKey: 'poDate',
+    sortDir: 'desc'
+  },
+  charts: {}
+};
+
+/* =========================================================================
+   3. UTILITIES
+   ========================================================================= */
+const $ = id => document.getElementById(id);
+
+function norm(s) {
+  return String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function num(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const n = Number(String(v).replace(/[,\s₹$]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseDate(v) {
+  if (v instanceof Date && !isNaN(v)) {
+    return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  }
+  if (typeof v === 'number' && v > 20000 && v < 80000) {
+    const d = new Date(Math.round((v - 25569) * 86400000));
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+
+  if (/^\d{8}$/.test(s)) {
+    const y = +s.slice(0,4), m = +s.slice(4,6) - 1, d = +s.slice(6,8);
+    const dt = new Date(y, m, d);
+    return isNaN(dt) ? null : dt;
+  }
+
+  let m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (m) {
+    const dt = new Date(+m[3], +m[2] - 1, +m[1]);
+    return isNaN(dt) ? null : dt;
+  }
+  m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (m) {
+    const dt = new Date(+m[1], +m[2] - 1, +m[3]);
+    return isNaN(dt) ? null : dt;
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function iso(d) {
+  if (!d) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function todayLocal() {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
+function fmtTons(v) {
+  if (!Number.isFinite(v)) return '—';
+  return v.toLocaleString('en-IN', { maximumFractionDigits: 3 }) + ' t';
+}
+
+function fmtPct(v) {
+  if (!Number.isFinite(v)) return 'N/A';
+  return v.toFixed(1) + '%';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* =========================================================================
+   4. DETECTION & MAPPING
+   ========================================================================= */
+function detectMapping(headers) {
+  const map = {};
+  const used = new Set();
+
+  for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
+    for (const a of aliases) {
+      const target = norm(a);
+      const found = headers.find(h => norm(h) === target && !used.has(h));
+      if (found) {
+        map[field] = found;
+        used.add(found);
+        break;
       }
     }
+  }
+  return map;
+}
 
-    function setStatus(id, msg, cls) {
-      const el = document.getElementById(id);
-      el.textContent = msg;
-      el.className = 'status-msg ' + (cls || '');
-    }
+function getRaw(row, map, field) {
+  const col = map[field];
+  return col && row[col] !== undefined ? row[col] : '';
+}
 
-    function cleanKey(str) {
-      return String(str || '').replace(/[\s_]/g, '').toLowerCase();
-    }
+/* =========================================================================
+   5. NORMALISATION
+   ========================================================================= */
+function normaliseStatus(raw) {
+  const v = norm(raw);
+  if (!v) return 'Unknown';
+  if (['delivered','completed','complete','closed','received','fulfilled','grn completed','grn done','finish','finished'].some(x => v.includes(x))) return 'Delivered';
+  if (['cancel','cancelled','canceled','reject','returned','void'].some(x => v.includes(x))) return 'Cancelled';
+  if (['open','pending','partial','partially delivered','in transit','processing','confirmed','active'].some(x => v.includes(x))) return 'Open';
+  return 'Unknown';
+}
 
-    // --- Auto-Categorization Magic Logic ---
-    function autoCategorize(skuName) {
-      const name = String(skuName).toLowerCase();
-      if (name.includes('ghee')) return 'Ghee';
-      if (name.includes('cheese') || name.includes('mozzarella') || name.includes('cheddar') || name.includes('slice') || name.includes('spread')) return 'Cheese';
-      if (name.includes('paneer')) return 'Paneer';
-      if (name.includes('whey') || name.includes('protein') || name.includes('avvatar')) return 'Protein';
-      if (name.includes('milk') || name.includes('uht') || name.includes('supremo')) return 'Milk';
-      if (name.includes('curd') || name.includes('dahi') || name.includes('lassi') || name.includes('yogurt')) return 'Curd';
-      if (name.includes('sweets') || name.includes('peda') || name.includes('katli') || name.includes('roll') || name.includes('jamun')) return 'Sweets';
-      if (name.includes('butter') || name.includes('cream')) return 'Butter & Cream';
-      return 'Other';
-    }
+function resolveUnit(rawUnit, unitMode) {
+  if (unitMode && unitMode !== 'auto') return unitMode;
+  const v = norm(rawUnit);
+  if (['kg','kgs','kilogram','kilograms'].includes(v)) return 'kg';
+  if (['ton','tons','tonne','tonnes','mt','metricton'].includes(v)) return 'ton';
+  if (['g','gram','grams'].includes(v)) return 'g';
+  if (['lb','lbs','pound','pounds'].includes(v)) return 'lb';
+  if (['box','boxes','case','cases','carton','cartons'].includes(v)) return 'box';
+  if (['piece','pieces','pcs','pc','ea','each','unit','units'].includes(v)) return 'piece';
+  return ''; // ambiguous → flagged
+}
 
-    // --- Process PO Dumps ---
-    function handlePOData(data, platform) {
-      if (data.length === 0) return 0;
-      
-      const keys = Object.keys(data[0]);
-      const map = {};
-      const aliases = {
-        poNo: ['pono', 'ponumber'],
-        vendorName: ['vendorname', 'vendor_name'],
-        delLocation: ['dellocation', 'del_location', 'facilityname', 'facility_name'],
-        city: ['city', 'shippingcityname', 'shipping_city_name'],
-        poDate: ['podate', 'po_date', 'orderdate', 'order_date'],
-        poExpiry: ['poexpiry', 'po_expiry', 'expirydate', 'expiry_date'],
-        apptDate: ['appointmentdate', 'appointment_date'],
-        status: ['status', 'postate', 'po_state'],
-        poQty: ['poqty', 'po_qty', 'unitsordered', 'units_ordered'],
-        grnQty: ['grnqty', 'grn_qty', 'totalgrnquantity', 'total_grn_quantity'],
-        poValue: ['povalue', 'po_value', 'totalamount', 'total_amount'],
-        skuName: ['skudesc', 'sku_desc', 'name', 'skuname', 'sku_name'],
-        uom: ['uom', 'uomtext', 'uom_text']
-      };
+function toTons(qty, unit, unitMode) {
+  const u = resolveUnit(unit, unitMode);
+  if (!u) return { tons: 0, ambiguous: true, unit: '' };
+  const factor = TON_CONVERSIONS[u];
+  if (factor === undefined) return { tons: 0, ambiguous: true, unit: u };
+  return { tons: qty * factor, ambiguous: false, unit: u };
+}
 
-      for (const [field, opts] of Object.entries(aliases)) {
-        for (const opt of opts) {
-          const found = keys.find(k => cleanKey(k) === cleanKey(opt));
-          if (found) { map[field] = found; break; }
-        }
-      }
+/* =========================================================================
+   6. FILE READING
+   ========================================================================= */
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    const isCSV = /\.(csv|txt|tsv)$/i.test(file.name);
 
-      let count = 0;
-      data.forEach(row => {
-        const get = (field) => map[field] ? row[map[field]] : '';
-        const getNum = (field) => Number(String(get(field)).replace(/[^0-9.-]+/g, "")) || 0;
-
-        const sku = String(get('skuName')).trim();
-        const category = autoCategorize(sku);
-        
-        // Tonnage Calculation
-        let uomStr = String(get('uom')).toLowerCase();
-        let multiplier = 1; 
-        if (uomStr.includes('kg')) {
-           const match = uomStr.match(/([\d.]+)\s*kg/);
-           if (match) multiplier = parseFloat(match[1]);
-        } else if (uomStr.includes('g')) {
-           const match = uomStr.match(/([\d.]+)\s*g/);
-           if (match) multiplier = parseFloat(match[1]) / 1000;
-        }
-        
-        const poQty = getNum('poQty');
-        const grnQty = getNum('grnQty');
-        const poTons = (poQty * multiplier) / 1000; 
-        const grnTons = (grnQty * multiplier) / 1000;
-
-        // Status & Expiry Logic
-        const expiryDateStr = get('poExpiry');
-        const expiryDate = expiryDateStr ? new Date(expiryDateStr) : null;
-        let statusStr = String(get('status')).trim();
-        
-        // Standardize Status for easier logic
-        let normStatus = statusStr.toLowerCase();
-        if (normStatus.includes('fulfilled')) normStatus = 'delivered';
-        if (normStatus.includes('cancel')) normStatus = 'cancelled';
-
-        let isExpired = false;
-        if (expiryDate && expiryDate < today && normStatus !== 'delivered' && normStatus !== 'cancelled') {
-          isExpired = true;
-        }
-
-        if (get('poNo')) {
-          count++;
-          rawPOData.push({
-            Platform: platform,
-            PONo: String(get('poNo')).trim(),
-            VendorName: String(get('vendorName')).trim(),
-            DelLocation: String(get('delLocation')).trim(),
-            City: String(get('city')).trim(),
-            PODate: get('poDate'),
-            POExpiry: expiryDateStr,
-            ApptDate: get('apptDate'),
-            Status: statusStr,
-            POQty: poQty,
-            GRNQty: grnQty,
-            PoValue: getNum('poValue'),
-            POTons: poTons,
-            GRNTons: grnTons,
-            Category: category,
-            IsExpired: isExpired,
-            IsCancelled: normStatus === 'cancelled',
-            NormStatus: normStatus
-          });
-        }
-      });
-      return count;
-    }
-
-    function checkReady() {
-      if (rawPOData.length > 0) {
-        document.getElementById('filterSection').style.display = 'block';
-        document.getElementById('kpiGrid').style.display = 'grid';
-        document.getElementById('mainContent').style.display = 'block';
-        
-        renderPlatformTabs();
-        initFilters();
-      }
-    }
-
-    // --- Platform Tabs Navigation ---
-    function renderPlatformTabs() {
-      const tabContainer = document.getElementById('platformTabs');
-      tabContainer.style.display = 'flex';
-      
-      const platforms = ['Overall', ...new Set(rawPOData.map(r => r.Platform))].sort();
-      
-      tabContainer.innerHTML = platforms.map(p => 
-        `<button class="nav-tab ${p === currentPlatform ? 'active' : ''}" onclick="switchPlatform('${p}', this)">${p}</button>`
-      ).join('');
-    }
-
-    window.switchPlatform = function(platform, element) {
-      currentPlatform = platform;
-      document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
-      element.classList.add('active');
-      
-      // Reset filters when switching tabs
-      if(choicesCategory) { choicesCategory.removeActiveItems(); choicesCity.removeActiveItems(); choicesStatus.removeActiveItems(); }
-      document.getElementById('searchInput').value = '';
-      
-      initFilters(); 
+    reader.onload = e => {
+      try {
+        const wb = isCSV
+          ? XLSX.read(e.target.result, { type: 'string', cellDates: true })
+          : XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
+        resolve(rows);
+      } catch (err) { reject(err); }
     };
+    reader.onerror = () => reject(new Error('File could not be read.'));
 
-    // --- Initialize Filters ---
-    function initFilters() {
-      const platformData = currentPlatform === 'Overall' ? rawPOData : rawPOData.filter(r => r.Platform === currentPlatform);
-      
-      const cats = [...new Set(platformData.map(r => r.Category))].sort();
-      const cities = [...new Set(platformData.map(r => r.City))].filter(Boolean).sort();
-      const stats = [...new Set(platformData.map(r => r.Status))].filter(Boolean).sort();
+    if (isCSV) reader.readAsText(file);
+    else reader.readAsArrayBuffer(file);
+  });
+}
 
-      const config = { removeItemButton: true, placeholder: true, placeholderValue: 'All', searchEnabled: true };
-      
-      if (choicesCategory) choicesCategory.destroy();
-      if (choicesCity) choicesCity.destroy();
-      if (choicesStatus) choicesStatus.destroy();
+/* =========================================================================
+   7. PLATFORM TAB RENDERING
+   ========================================================================= */
+function platformPaneHTML(key) {
+  const label = PLATFORM_LABELS[key];
+  return `
+  <div class="panel">
+    <h2>${label} — independent upload</h2>
+    <p class="note">
+      Upload ${label} TXT, CSV, or XLSX. This data is isolated from the other platforms until the import is confirmed.
+      Duplicate key within this platform: <b>PO Number + SKU + Expiry Date</b>.
+    </p>
 
-      choicesCategory = new Choices('#filterCategory', { ...config, choices: cats.map(c => ({ value: c, label: c })) });
-      choicesCity = new Choices('#filterCity', { ...config, choices: cities.map(c => ({ value: c, label: c })) });
-      choicesStatus = new Choices('#filterStatus', { ...config, choices: stats.map(s => ({ value: s, label: s })) });
+    <div class="dropzone" id="drop-${key}">
+      <strong>Drag & drop a ${label} file here</strong>, or click to choose a file.<br>
+      <span style="font-size:12px;color:#667085">TXT, CSV, XLSX, XLS supported</span>
+      <input type="file" id="file-${key}" accept=".txt,.csv,.tsv,.xlsx,.xls">
+    </div>
 
-      document.getElementById('filterCategory').addEventListener('change', updateDashboard);
-      document.getElementById('filterCity').addEventListener('change', updateDashboard);
-      document.getElementById('filterStatus').addEventListener('change', updateDashboard);
-      document.getElementById('searchInput').addEventListener('input', updateDashboard);
+    <div class="file-summary" id="summary-${key}">No file uploaded yet.</div>
 
-      updateDashboard();
-    }
+    <div id="mapping-${key}" style="display:none;margin-top:16px">
+      <h2 style="font-size:15px">Column mapping — preview before import</h2>
+      <p class="note">Confirm or correct the source column for each internal field. Unmapped fields stay blank and are flagged, never invented.</p>
+      <div class="map-grid" id="mapgrid-${key}"></div>
 
-    // --- Main Dashboard Logic ---
-    function updateDashboard() {
-      const selCats = choicesCategory.getValue(true);
-      const selCities = choicesCity.getValue(true);
-      const selStatuses = choicesStatus.getValue(true);
-      const searchStr = document.getElementById('searchInput').value.toLowerCase();
+      <div class="filter" style="max-width:340px;margin-top:14px">
+        <label for="unitmode-${key}">Quantity unit rule</label>
+        <select id="unitmode-${key}">
+          <option value="auto">Auto-detect from the unit column</option>
+          <option value="kg">Treat raw quantity as kilograms</option>
+          <option value="ton">Treat raw quantity as metric tons</option>
+          <option value="g">Treat raw quantity as grams</option>
+          <option value="box">Treat raw quantity as boxes (1 box = 1 ton)</option>
+          <option value="piece">Treat raw quantity as pieces (1 piece = 1 ton)</option>
+        </select>
+      </div>
 
-      const platformFiltered = currentPlatform === 'Overall' ? rawPOData : rawPOData.filter(r => r.Platform === currentPlatform);
+      <div id="preview-${key}" class="status"></div>
+      <div id="warnings-${key}"></div>
 
-      const filtered = platformFiltered.filter(r => {
-        if (selCats.length && !selCats.includes(r.Category)) return false;
-        if (selCities.length && !selCities.includes(r.City)) return false;
-        if (selStatuses.length && !selStatuses.includes(r.Status)) return false;
-        if (searchStr && !r.PONo.toLowerCase().includes(searchStr) && !r.VendorName.toLowerCase().includes(searchStr)) return false;
-        return true;
-      });
+      <div class="filter-actions">
+        <button class="primary" onclick="confirmImport('${key}')">Confirm import</button>
+        <button class="ghost" onclick="cancelImport('${key}')">Cancel</button>
+      </div>
+    </div>
 
-      document.getElementById('rowCount').textContent = `${filtered.length} filtered rows`;
+    <div id="imported-${key}" style="display:none;margin-top:16px">
+      <div class="status" id="importstatus-${key}"></div>
+      <div class="filter-actions">
+        <button class="ghost" onclick="downloadMapping('${key}')">Download mapping config</button>
+        <label class="ghost" style="display:inline-block;padding:9px 14px;border-radius:7px;border:1px solid var(--green);cursor:pointer;color:var(--green);font-weight:700">
+          Upload mapping config
+          <input type="file" accept=".json" style="display:none" onchange="uploadMapping('${key}', this.files[0])">
+        </label>
+        <button class="danger" onclick="removePlatformData('${key}')">Remove this platform's data</button>
+      </div>
+    </div>
+  </div>
 
-      // --- Update KPIs ---
-      const uniquePOs = new Set(filtered.map(r => r.PONo)).size;
-      const totalQty = filtered.reduce((sum, r) => sum + r.POQty, 0);
-      const totalGRN = filtered.reduce((sum, r) => sum + r.GRNQty, 0);
-      
-      const openPOs = filtered.reduce((sum, r) => sum + Math.max(0, r.POQty - r.GRNQty), 0);
-      const expiredCount = filtered.filter(r => r.IsExpired).length;
-      
-      const fillRate = totalQty > 0 ? ((totalGRN / totalQty) * 100).toFixed(1) : '0.0';
+  <div class="kpis" id="kpis-${key}"></div>
 
-      document.getElementById('kpiTotalPOs').textContent = uniquePOs.toLocaleString();
-      document.getElementById('kpiTotalQty').textContent = totalQty.toLocaleString();
-      document.getElementById('kpiOpen').textContent = openPOs.toLocaleString();
-      document.getElementById('kpiExpired').textContent = expiredCount.toLocaleString();
-      document.getElementById('kpiFillRate').textContent = fillRate + '%';
+  <div class="chart-grid">
+    <div class="panel"><h2>${label} — PO vs GRN (tons)</h2><div class="chart-box"><canvas id="chart-po-${key}"></canvas></div></div>
+    <div class="panel"><h2>${label} — status distribution</h2><div class="chart-box"><canvas id="chart-status-${key}"></canvas></div></div>
+    <div class="panel"><h2>${label} — city-wise fill rate</h2><div class="chart-box"><canvas id="chart-city-${key}"></canvas></div></div>
+    <div class="panel"><h2>${label} — top SKUs by open PO (tons)</h2><div class="chart-box"><canvas id="chart-sku-${key}"></canvas></div></div>
+  </div>
 
-      // --- Table Logic: Dynamic Phases ---
-      if (selCats.length === 0 && selCities.length === 0) {
-        document.getElementById('viewTitle').textContent = "Phase 1: Overall Category Level";
-        renderPhase1(filtered);
-      } else if (selCats.length === 1 && selCities.length === 0) {
-        document.getElementById('viewTitle').textContent = `Phase 2: Category & City (${selCats[0]})`;
-        renderPhase2(filtered);
-      } else {
-        document.getElementById('viewTitle').textContent = "Phase 3: Detailed PO Lines";
-        renderPhase3(filtered);
-      }
-    }
+  <div class="panel">
+    <h2>${label} — detailed records</h2>
+    <div class="filters">
+      <div class="filter"><label>City</label><select id="city-${key}"><option>All</option></select></div>
+      <div class="filter"><label>Category</label><select id="cat-${key}"><option>All</option></select></div>
+      <div class="filter"><label>Status</label><select id="status-${key}"><option>All</option></select></div>
+      <div class="filter"><label>PO date from</label><input type="date" id="from-${key}"></div>
+      <div class="filter"><label>PO date to</label><input type="date" id="to-${key}"></div>
+      <div class="filter"><label>Search</label><input id="search-${key}" placeholder="PO, SKU, product, city…"></div>
+    </div>
+    <div class="filter-actions">
+      <button class="ghost" onclick="resetPlatformFilters('${key}')">Reset filters</button>
+      <button class="ghost" onclick="exportTable('${key}', 'csv')">Export CSV</button>
+      <button class="ghost" onclick="exportTable('${key}', 'xlsx')">Export Excel</button>
+    </div>
+    <div class="table-wrap"><table id="table-${key}"></table></div>
+    <div class="pager" id="pager-${key}"></div>
+  </div>
+  `;
+}
 
-    // --- Phase 1: Category | PO | GRN ---
-    function renderPhase1(data) {
-      const cols = ['Category', 'Total PO QTY', 'Total GRN QTY'];
-      document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
-      
-      const groups = {};
-      data.forEach(r => {
-        if (!groups[r.Category]) groups[r.Category] = { po: 0, grn: 0 };
-        groups[r.Category].po += r.POQty;
-        groups[r.Category].grn += r.GRNQty;
-      });
+function buildPlatformPanes() {
+  const host = $('tab-platform');
+  host.innerHTML = PLATFORMS.map(platformPaneHTML).join('');
 
-      let html = '';
-      Object.keys(groups).sort().forEach(cat => {
-        html += `<tr>
-          <td><strong>${cat}</strong></td>
-          <td>${groups[cat].po.toLocaleString()}</td>
-          <td>${groups[cat].grn.toLocaleString()}</td>
-        </tr>`;
-      });
-      document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="3" style="text-align:center;">No data</td></tr>`;
-    }
+  PLATFORMS.forEach(key => {
+    const drop = $(`drop-${key}`);
+    const input = $(`file-${key}`);
 
-    // --- Phase 2: Category | City | PO Tons | GRN Tons | Fill Rate | Open Po | EXPIRED | CANCELLED ---
-    function renderPhase2(data) {
-      const cols = ['Category', 'City', 'PO Tons', 'GRN Tons', 'Fill Rate %', 'Open Po (Qty)', 'EXPIRED', 'CANCELLED'];
-      document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
-      
-      const groups = {};
-      data.forEach(r => {
-        const key = r.Category + '|' + r.City;
-        if (!groups[key]) {
-          groups[key] = { cat: r.Category, city: r.City, poT: 0, grnT: 0, poQty: 0, grnQty: 0, open: 0, exp: 0, can: 0 };
-        }
-        groups[key].poT += r.POTons;
-        groups[key].grnT += r.GRNTons;
-        groups[key].poQty += r.POQty;
-        groups[key].grnQty += r.GRNQty;
-        groups[key].open += Math.max(0, r.POQty - r.GRNQty);
-        if (r.IsExpired) groups[key].exp++;
-        if (r.IsCancelled) groups[key].can++;
-      });
-
-      let html = '';
-      Object.values(groups).sort((a,b) => b.poQty - a.poQty).forEach(g => {
-        const fillRate = g.poQty > 0 ? ((g.grnQty / g.poQty) * 100).toFixed(1) : '0.0';
-        html += `<tr>
-          <td><strong>${g.cat}</strong></td>
-          <td>${g.city}</td>
-          <td>${g.poT.toFixed(3)}</td>
-          <td>${g.grnT.toFixed(3)}</td>
-          <td>${fillRate}%</td>
-          <td>${g.open.toLocaleString()}</td>
-          <td style="color:#dc2626; font-weight:600;">${g.exp}</td>
-          <td style="color:#64748b; font-weight:600;">${g.can}</td>
-        </tr>`;
-      });
-      document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="8" style="text-align:center;">No data</td></tr>`;
-    }
-
-    // --- Phase 3: Detailed View ---
-    function renderPhase3(data) {
-      const cols = ['Vendor Name', 'Del Location', 'PO No', 'PO Date', 'PO Expiry', 'Appointment Date', 'Status', 'Sum of PO QTY', 'Sum of GRN QTY', 'Fill rate'];
-      document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
-      
-      const poMap = {};
-      data.forEach(r => {
-        if (!poMap[r.PONo]) {
-          poMap[r.PONo] = { ...r, POQty: 0, GRNQty: 0 };
-        }
-        poMap[r.PONo].POQty += r.POQty;
-        poMap[r.PONo].GRNQty += r.GRNQty;
-      });
-
-      let html = '';
-      Object.values(poMap).sort((a,b) => new Date(b.PODate) - new Date(a.PODate)).forEach(r => {
-        const fillRate = r.POQty > 0 ? ((r.GRNQty / r.POQty) * 100).toFixed(1) : '0.0';
-        
-        let badgeColor = 'background:#f1f5f9; color:#475569;';
-        if (r.Status.toLowerCase() === 'open') badgeColor = 'background:#dcfce7; color:#166534;';
-        else if (r.IsExpired) badgeColor = 'background:#fee2e2; color:#991b1b;';
-        else if (r.IsCancelled) badgeColor = 'background:#e2e8f0; color:#334155;';
-
-        html += `<tr>
-          <td>${r.VendorName}</td>
-          <td>${r.DelLocation}</td>
-          <td><strong>${r.PONo}</strong></td>
-          <td>${r.PODate}</td>
-          <td>${r.POExpiry}</td>
-          <td>${r.ApptDate || '—'}</td>
-          <td><span style="padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600; ${badgeColor}">${r.Status}</span></td>
-          <td><strong>${r.POQty.toLocaleString()}</strong></td>
-          <td>${r.GRNQty.toLocaleString()}</td>
-          <td>${fillRate}%</td>
-        </tr>`;
-      });
-      document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="10" style="text-align:center;">No data</td></tr>`;
-    }
-
-    // --- Export CSV ---
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      const table = document.getElementById('dataTable');
-      if (!table || table.rows.length <= 1) { alert('No data to export.'); return; }
-      
-      let csvContent = "";
-      for (let i = 0; i < table.rows.length; i++) {
-        let rowData = [];
-        for (let j = 0; j < table.rows[i].cells.length; j++) {
-          rowData.push(`"${table.rows[i].cells[j].innerText}"`);
-        }
-        csvContent += rowData.join(",") + "\n";
-      }
-      
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `PO_Export_${currentPlatform}.csv`;
-      link.click();
+    drop.addEventListener('click', () => input.click());
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault();
+      drop.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) handlePlatformFile(key, e.dataTransfer.files[0]);
     });
-  </script>
+
+    input.addEventListener('change', e => {
+      if (e.target.files[0]) handlePlatformFile(key, e.target.files[0]);
+    });
+
+    restoreMapping(key);
+  });
+}
+
+/* =========================================================================
+   8. IMPORT FLOW
+   ========================================================================= */
+const pending = {}; // key -> { rows, headers, fileName, mapping }
+
+async function handlePlatformFile(key, file) {
+  try {
+    $(`summary-${key}`).textContent = `Reading ${file.name}…`;
+    const rows = await readFile(file);
+
+    if (!rows.length) {
+      $(`summary-${key}`).textContent = 'The file has no data rows.';
+      return;
+    }
+
+    const headers = [...new Set(rows.flatMap(r => Object.keys(r)))];
+    let mapping = detectMapping(headers);
+    if (Object.keys(mapping).length === 0 && state.platforms[key].mapping) {
+      mapping = { ...state.platforms[key].mapping };
+    }
+
+    pending[key] = { rows, headers, fileName: file.name, mapping };
+
+    $(`summary-${key}`).innerHTML = `File: <b>${escapeHtml(file.name)}</b> • ${rows.length.toLocaleString()} raw rows • ${headers.length} columns detected.`;
+
+    buildMappingUI(key);
+    $(`mapping-${key}`).style.display = 'block';
+    $(`imported-${key}`).style.display = 'none';
+  } catch (err) {
+    $(`summary-${key}`).textContent = 'Could not read file: ' + err.message;
+    console.error(err);
+  }
+}
+
+function buildMappingUI(key) {
+  const { headers, mapping } = pending[key];
+  const grid = $(`mapgrid-${key}`);
+  grid.innerHTML = '';
+
+  const required = ['poNumber','poDate','poQty','sku'];
+  const optional = ['expiryDate','status','city','category','product','grnQty','unit','vendor','lineItem'];
+
+  [...required, ...optional].forEach(field => {
+    const div = document.createElement('div');
+    div.className = 'map-item';
+    const label = document.createElement('label');
+    label.textContent = (required.includes(field) ? '* ' : '') + field;
+    const sel = document.createElement('select');
+    sel.innerHTML = '<option value="">— not mapped —</option>' +
+      headers.map(h => `<option value="${escapeHtml(h)}" ${mapping[field] === h ? 'selected' : ''}>${escapeHtml(h)}</option>`).join('');
+    sel.addEventListener('change', () => {
+      if (sel.value) mapping[field] = sel.value;
+      else delete mapping[field];
+      refreshPreview(key);
+    });
+    div.appendChild(label);
+    div.appendChild(sel);
+    grid.appendChild(div);
+  });
+
+  const unitSel = $(`unitmode-${key}`);
+  if (unitSel) unitSel.value = state.platforms[key].unitMode || 'auto';
+  unitSel.addEventListener('change', () => refreshPreview(key));
+
+  refreshPreview(key);
+}
+
+function refreshPreview(key) {
+  const p = pending[key];
+  if (!p) return;
+
+  const unitMode = $(`unitmode-${key}`).value;
+  const { normalised, warnings } = normaliseRows(p.rows, p.mapping, unitMode, key);
+
+  const poTons = normalised.reduce((s, r) => s + r.poTons, 0);
+  const grnTons = normalised.reduce((s, r) => s + r.grnTons, 0);
+  const openTons = poTons - grnTons;
+
+  const dupes = findDuplicates(normalised, key);
+
+  $(`preview-${key}`).innerHTML = `
+    <b>Preview</b><br>
+    Rows that will be imported: <b>${normalised.length.toLocaleString()}</b> of ${p.rows.length.toLocaleString()}<br>
+    PO tons: <b>${fmtTons(poTons)}</b> • GRN tons: <b>${fmtTons(grnTons)}</b> • Open PO tons: <b>${fmtTons(openTons)}</b><br>
+    Exact duplicates inside this file: <b>${dupes.count}</b> rows will be skipped automatically.
+  `;
+
+  const warnHtml = warnings.length
+    ? `<div class="status" style="border-color:#f5c26b;background:#fffbf2"><b>Warnings (${warnings.length})</b><ul class="warn-list">${warnings.slice(0, 12).map(w => `<li>${escapeHtml(w)}</li>`).join('')}${warnings.length > 12 ? '<li>…</li>' : ''}</ul></div>`
+    : `<div class="status" style="border-color:#b7e4c7;background:#f2fbf6"><span class="pill ok">No blocking warnings</span></div>`;
+
+  $(`warnings-${key}`).innerHTML = warnHtml;
+}
+
+/* =========================================================================
+   9. NORMALISE ROWS
+   ========================================================================= */
+function normaliseRows(rawRows, mapping, unitMode, platformKey) {
+  const normalised = [];
+  const warnings = [];
+  let missingDate = 0, missingSku = 0, ambiguousUnit = 0, zeroPo = 0, negativeOpen = 0, invalidQty = 0;
+
+  rawRows.forEach((row, i) => {
+    const poDate = parseDate(getRaw(row, mapping, 'poDate'));
+    const expiry = parseDate(getRaw(row, mapping, 'expiryDate'));
+
+    if (!poDate) missingDate++;
+
+    const sku = String(getRaw(row, mapping, 'sku') ?? '').trim();
+    if (!sku) missingSku++;
+
+    const poQtyRaw = num(getRaw(row, mapping, 'poQty'));
+    const grnQtyRaw = num(getRaw(row, mapping, 'grnQty'));
+
+    if (poQtyRaw === 0) zeroPo++;
+    if (!Number.isFinite(poQtyRaw) || !Number.isFinite(grnQtyRaw)) invalidQty++;
+
+    const unitRaw = getRaw(row, mapping, 'unit');
+    const poConv = toTons(poQtyRaw, unitRaw, unitMode);
+    const grnConv = toTons(grnQtyRaw, unitRaw, unitMode);
+
+    if (poConv.ambiguous || grnConv.ambiguous) ambiguousUnit++;
+
+    const openTons = poConv.tons - grnConv.tons;
+    if (openTons < 0) negativeOpen++;
+
+    const rawStatus = String(getRaw(row, mapping, 'status') ?? '').trim();
+
+    normalised.push({
+      platform: platformKey,
+      platformLabel: PLATFORM_LABELS[platformKey],
+      poNumber: String(getRaw(row, mapping, 'poNumber') ?? '').trim(),
+      poDate,
+      expiryDate: expiry,
+      status: normaliseStatus(rawStatus),
+      rawStatus,
+      city: String(getRaw(row, mapping, 'city') ?? '').trim() || 'Unknown',
+      category: String(getRaw(row, mapping, 'category') ?? '').trim() || 'Unknown',
+      sku: sku || 'Unknown SKU',
+      product: String(getRaw(row, mapping, 'product') ?? '').trim() || 'Unknown product',
+      unit: unitRaw,
+      poTons: poConv.tons,
+      grnTons: grnConv.tons,
+      openTons,
+      vendor: String(getRaw(row, mapping, 'vendor') ?? '').trim(),
+      lineItem: String(getRaw(row, mapping, 'lineItem') ?? '').trim(),
+      source: row
+    });
+  });
+
+  if (missingDate) warnings.push(`${missingDate} row(s) have no valid PO date and will be kept with blank date.`);
+  if (missingSku) warnings.push(`${missingSku} row(s) have no SKU; they are kept as "Unknown SKU" for review.`);
+  if (ambiguousUnit) warnings.push(`${ambiguousUnit} row(s) have an ambiguous quantity unit. Set the "Quantity unit rule" explicitly to include them.`);
+  if (zeroPo) warnings.push(`${zeroPo} row(s) have PO quantity = 0. Fill rate will show N/A.`);
+  if (negativeOpen) warnings.push(`${negativeOpen} row(s) have negative Open PO (GRN > PO). They are retained and flagged.`);
+  if (invalidQty) warnings.push(`${invalidQty} row(s) have invalid quantity values.`);
+
+  return { normalised, warnings };
+}
+
+function findDuplicates(rows, platformKey) {
+  const seen = new Set();
+  const dupes = [];
+  const deduped = [];
+
+  rows.forEach(r => {
+    const key = [platformKey, r.poNumber || '', r.sku || '', iso(r.expiryDate)].join('|');
+    if (seen.has(key)) dupes.push(r);
+    else { seen.add(key); deduped.push(r); }
+  });
+
+  return { count: dupes.length, rows: dupes, deduped };
+}
+
+/* =========================================================================
+   10. CONFIRM IMPORT
+   ========================================================================= */
+function confirmImport(key) {
+  const p = pending[key];
+  if (!p) return;
+
+  if (!p.mapping.poNumber || !p.mapping.poDate || !p.mapping.poQty || !p.mapping.sku) {
+    alert('Please map the required fields: PO Number, PO Date, PO Quantity, SKU.');
+    return;
+  }
+
+  const unitMode = $(`unitmode-${key}`).value;
+  const { normalised } = normaliseRows(p.rows, p.mapping, unitMode, key);
+  const { deduped } = findDuplicates(normalised, key);
+
+  const st = state.platforms[key];
+  const replace = st.replaceOnNext;
+
+  if (replace) {
+    st.rows = deduped;
+  } else {
+    const existingKeys = new Set(st.rows.map(r => [r.poNumber, r.sku, iso(r.expiryDate)].join('|')));
+    const fresh = deduped.filter(r => !existingKeys.has([r.poNumber, r.sku, iso(r.expiryDate)].join('|')));
+    st.rows = [...st.rows, ...fresh];
+  }
+
+  st.fileName = p.fileName;
+  st.importedAt = new Date();
+  st.mapping = { ...p.mapping };
+  st.unitMode = unitMode;
+  st.replaceOnNext = false;
+
+  saveMapping(key);
+
+  delete pending[key];
+  $(`mapping-${key}`).style.display = 'none';
+  $(`imported-${key}`).style.display = 'block';
+  $(`importstatus-${key}`).innerHTML = `
+    <span class="pill ok">Imported</span>
+    <b>${escapeHtml(p.fileName)}</b> • ${st.rows.length.toLocaleString()} accepted records •
+    Last import: ${st.importedAt.toLocaleString()}<br>
+    Mode: <b>${replace ? 'Replace' : 'Append'}</b>.
+    Use the Overall tab to see consolidated totals.
+  `;
+
+  refreshAll();
+}
+
+function cancelImport(key) {
+  delete pending[key];
+  $(`mapping-${key}`).style.display = 'none';
+  $(`summary-${key}`).textContent = state.platforms[key].rows.length
+    ? `Existing data retained: ${state.platforms[key].rows.length.toLocaleString()} records.`
+    : 'No file uploaded yet.';
+}
+
+function removePlatformData(key) {
+  if (!confirm(`Remove all ${PLATFORM_LABELS[key]} data? This cannot be undone.`)) return;
+  state.platforms[key].rows = [];
+  state.platforms[key].fileName = '';
+  state.platforms[key].importedAt = null;
+  $(`imported-${key}`).style.display = 'none';
+  $(`summary-${key}`).textContent = 'No file uploaded yet.';
+  refreshAll();
+}
+
+/* =========================================================================
+   11. MAPPING PERSISTENCE
+   ========================================================================= */
+function mappingStorageKey(key) { return `po_mis_mapping_${key}`; }
+
+function saveMapping(key) {
+  try {
+    localStorage.setItem(mappingStorageKey(key), JSON.stringify({
+      mapping: state.platforms[key].mapping,
+      unitMode: state.platforms[key].unitMode
+    }));
+  } catch (e) { /* storage may be blocked */ }
+}
+
+function restoreMapping(key) {
+  try {
+    const raw = localStorage.getItem(mappingStorageKey(key));
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.mapping) state.platforms[key].mapping = saved.mapping;
+    if (saved.unitMode) {
+      state.platforms[key].unitMode = saved.unitMode;
+      const sel = $(`unitmode-${key}`);
+      if (sel) sel.value = saved.unitMode;
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function downloadMapping(key) {
+  const data = {
+    platform: key,
+    mapping: state.platforms[key].mapping,
+    unitMode: state.platforms[key].unitMode
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${key}-mapping.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function uploadMapping(key, file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.mapping) state.platforms[key].mapping = data.mapping;
+      if (data.unitMode) state.platforms[key].unitMode = data.unitMode;
+      saveMapping(key);
+      alert('Mapping config loaded. It will apply to the next import.');
+    } catch (err) { alert('Invalid mapping file: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+/* =========================================================================
+   12. FILTERS & AGGREGATION
+   ========================================================================= */
+function allOverallRows() {
+  return PLATFORMS.flatMap(k => state.platforms[k].rows);
+}
+
+function applyOverallFilters(rows) {
+  const f = state.overall.filters;
+  return rows.filter(r =>
+    (f.platform === 'All' || r.platform === f.platform) &&
+    (f.city === 'All' || r.city === f.city) &&
+    (f.category === 'All' || r.category === f.category) &&
+    (f.status === 'All' || r.status === f.status) &&
+    (!f.from || (r.poDate && iso(r.poDate) >= f.from)) &&
+    (!f.to || (r.poDate && iso(r.poDate) <= f.to)) &&
+    (!f.search || [r.poNumber, r.sku, r.product, r.city, r.vendor, r.category].join(' ').toLowerCase().includes(f.search.toLowerCase()))
+  );
+}
+
+function applyPlatformFilters(rows, key) {
+  const city = $(`city-${key}`).value;
+  const cat = $(`cat-${key}`).value;
+  const status = $(`status-${key}`).value;
+  const from = $(`from-${key}`).value;
+  const to = $(`to-${key}`).value;
+  const search = $(`search-${key}`).value;
+
+  return rows.filter(r =>
+    (city === 'All' || r.city === city) &&
+    (cat === 'All' || r.category === cat) &&
+    (status === 'All' || r.status === status) &&
+    (!from || (r.poDate && iso(r.poDate) >= from)) &&
+    (!to || (r.poDate && iso(r.poDate) <= to)) &&
+    (!search || [r.poNumber, r.sku, r.product, r.city, r.vendor, r.category].join(' ').toLowerCase().includes(search.toLowerCase()))
+  );
+}
+
+function summarise(rows) {
+  const poTons = rows.reduce((s, r) => s + r.poTons, 0);
+  const grnTons = rows.reduce((s, r) => s + r.grnTons, 0);
+  const openTons = poTons - grnTons;
+  const fillRate = poTons === 0 ? NaN : (grnTons / poTons) * 100;
+
+  const today = todayLocal();
+  let delivered = 0, cancelled = 0, expired = 0;
+  rows.forEach(r => {
+    if (r.status === 'Delivered') delivered++;
+    else if (r.status === 'Cancelled') cancelled++;
+    else if (r.expiryDate && r.expiryDate < today) expired++;
+  });
+
+  return { poTons, grnTons, openTons, fillRate, delivered, cancelled, expired, total: rows.length };
+}
+
+/* =========================================================================
+   13. KPI RENDERING
+   ========================================================================= */
+function kpiCard(label, value, sub) {
+  return `<div class="kpi"><div class="label">${escapeHtml(label)}</div><div class="value">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+}
+
+function renderOverallKpis(rows) {
+  const s = summarise(rows);
+  const negative = rows.filter(r => r.openTons < 0).length;
+  const missingSku = rows.filter(r => r.sku === 'Unknown SKU').length;
+
+  $('overallKpis').innerHTML = [
+    kpiCard('Total PO Tons', fmtTons(s.poTons), `${s.total.toLocaleString()} records`),
+    kpiCard('Total GRN Tons', fmtTons(s.grnTons), 'Received quantity'),
+    kpiCard('Open PO Tons', fmtTons(s.openTons), negative ? `${negative} negative row(s) flagged` : 'PO − GRN'),
+    kpiCard('Fill Rate', fmtPct(s.fillRate), 'GRN ÷ PO × 100'),
+    kpiCard('Delivered', s.delivered.toLocaleString(), 'Status = Delivered'),
+    kpiCard('Cancelled', s.cancelled.toLocaleString(), 'Status = Cancelled'),
+    kpiCard('Expired', s.expired.toLocaleString(), 'Expiry < today, not delivered/cancelled'),
+    kpiCard('Unmapped SKUs', missingSku.toLocaleString(), 'Review in SKU master')
+  ].join('');
+}
+
+/* =========================================================================
+   14. CHARTS
+   ========================================================================= */
+function destroyChart(name) {
+  if (state.charts[name]) { state.charts[name].destroy(); delete state.charts[name]; }
+}
+
+function makeBarChart(name, canvasId, labels, datasets, stacked = false) {
+  destroyChart(name);
+  state.charts[name] = new Chart($(canvasId), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: datasets.length > 1, position: 'bottom' } },
+      scales: {
+        x: { stacked, ticks: { maxRotation: 45, minRotation: 0 } },
+        y: { stacked, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function makeDoughnut(name, canvasId, labels, values) {
+  destroyChart(name);
+  state.charts[name] = new Chart($(canvasId), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#1e5b3a','#2e7d4f','#5aa97a','#a8e6c0','#d4efe0','#f5c26b','#b42318']
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+function renderOverallCharts(rows) {
+  // Platform PO vs GRN
+  const byPlatform = PLATFORMS.map(k => {
+    const sub = rows.filter(r => r.platform === k);
+    return {
+      label: PLATFORM_LABELS[k],
+      po: sub.reduce((s, r) => s + r.poTons, 0),
+      grn: sub.reduce((s, r) => s + r.grnTons, 0)
+    };
+  });
+  makeBarChart('overall-platform', 'chartPlatform',
+    byPlatform.map(p => p.label),
+    [
+      { label: 'PO tons', data: byPlatform.map(p => p.po), backgroundColor: '#1e5b3a' },
+      { label: 'GRN tons', data: byPlatform.map(p => p.grn), backgroundColor: '#a8e6c0' }
+    ]
+  );
+
+  // Status distribution
+  const statusMap = {};
+  rows.forEach(r => { statusMap[r.status] = (statusMap[r.status] || 0) + 1; });
+  const statusLabels = Object.keys(statusMap);
+  makeDoughnut('overall-status', 'chartStatus', statusLabels, statusLabels.map(k => statusMap[k]));
+
+  // City fill rate
+  const cityMap = {};
+  rows.forEach(r => {
+    if (!cityMap[r.city]) cityMap[r.city] = { po: 0, grn: 0 };
+    cityMap[r.city].po += r.poTons;
+    cityMap[r.city].grn += r.grnTons;
+  });
+  const cityRows = Object.entries(cityMap)
+    .map(([city, v]) => ({ city, fill: v.po > 0 ? v.grn / v.po * 100 : NaN }))
+    .filter(x => Number.isFinite(x.fill))
+    .sort((a, b) => b.fill - a.fill)
+    .slice(0, 10);
+  makeBarChart('overall-city', 'chartCity',
+    cityRows.map(x => x.city),
+    [{ label: 'Fill rate %', data: cityRows.map(x => x.fill), backgroundColor: '#2e7d4f' }]
+  );
+
+  // Category open tons
+  const catMap = {};
+  rows.forEach(r => { catMap[r.category] = (catMap[r.category] || 0) + r.openTons; });
+  const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  makeBarChart('overall-category', 'chartCategory',
+    catRows.map(x => x[0]),
+    [{ label: 'Open PO tons', data: catRows.map(x => x[1]), backgroundColor: '#b54708' }]
+  );
+}
+
+function renderPlatformCharts(key, rows) {
+  const s = summarise(rows);
+  makeBarChart(`po-${key}`, `chart-po-${key}`,
+    ['PO', 'GRN', 'Open'],
+    [{
+      label: PLATFORM_LABELS[key],
+      data: [s.poTons, s.grnTons, s.openTons],
+      backgroundColor: ['#1e5b3a','#a8e6c0','#f5c26b']
+    }]
+  );
+
+  const statusMap = {};
+  rows.forEach(r => { statusMap[r.status] = (statusMap[r.status] || 0) + 1; });
+  makeDoughnut(`status-${key}`, `chart-status-${key}`, Object.keys(statusMap), Object.values(statusMap));
+
+  const cityMap = {};
+  rows.forEach(r => {
+    if (!cityMap[r.city]) cityMap[r.city] = { po: 0, grn: 0 };
+    cityMap[r.city].po += r.poTons;
+    cityMap[r.city].grn += r.grnTons;
+  });
+  const cityRows = Object.entries(cityMap)
+    .map(([city, v]) => ({ city, fill: v.po > 0 ? v.grn / v.po * 100 : NaN }))
+    .filter(x => Number.isFinite(x.fill))
+    .sort((a, b) => b.fill - a.fill)
+    .slice(0, 10);
+  makeBarChart(`city-${key}`, `chart-city-${key}`,
+    cityRows.map(x => x.city),
+    [{ label: 'Fill rate %', data: cityRows.map(x => x.fill), backgroundColor: '#2e7d4f' }]
+  );
+
+  const skuMap = {};
+  rows.forEach(r => { skuMap[r.sku] = (skuMap[r.sku] || 0) + r.openTons; });
+  const skuRows = Object.entries(skuMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  makeBarChart(`sku-${key}`, `chart-sku-${key}`,
+    skuRows.map(x => x[0]),
+    [{ label: 'Open PO tons', data: skuRows.map(x => x[1]), backgroundColor: '#b54708' }]
+  );
+}
+
+/* =========================================================================
+   15. TABLE RENDERING
+   ========================================================================= */
+const TABLE_COLUMNS = [
+  { key: 'platformLabel', label: 'Platform', sortable: true },
+  { key: 'poNumber', label: 'PO Number', sortable: true },
+  { key: 'poDate', label: 'PO Date', sortable: true, render: r => r.poDate ? iso(r.poDate) : '—' },
+  { key: 'expiryDate', label: 'Expiry', sortable: true, render: r => r.expiryDate ? iso(r.expiryDate) : '—' },
+  { key: 'status', label: 'Status', sortable: true },
+  { key: 'city', label: 'City', sortable: true },
+  { key: 'category', label: 'Category', sortable: true },
+  { key: 'sku', label: 'SKU', sortable: true },
+  { key: 'product', label: 'Product', sortable: true },
+  { key: 'poTons', label: 'PO Tons', sortable: true, num: true, render: r => fmtTons(r.poTons) },
+  { key: 'grnTons', label: 'GRN Tons', sortable: true, num: true, render: r => fmtTons(r.grnTons) },
+  { key: 'openTons', label: 'Open Tons', sortable: true, num: true, render: r => fmtTons(r.openTons) },
+  { key: 'fillRate', label: 'Fill Rate', sortable: false, num: true, render: r => fmtPct(r.poTons === 0 ? NaN : r.grnTons / r.poTons * 100) }
+];
+
+function renderTable(key, rows, pageState) {
+  const table = $(key === 'overall' ? 'ovTable' : `table-${key}`);
+  const pager = $(key === 'overall' ? 'ovPager' : `pager-${key}`);
+
+  const sortKey = pageState.sortKey;
+  const sortDir = pageState.sortDir;
+  const sorted = [...rows].sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    return sortDir === 'asc'
+      ? String(av).localeCompare(String(bv))
+      : String(bv).localeCompare(String(av));
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageState.pageSize));
+  pageState.page = Math.min(pageState.page, totalPages);
+  const start = (pageState.page - 1) * pageState.pageSize;
+  const pageRows = sorted.slice(start, start + pageState.pageSize);
+
+  let html = '<thead><tr>';
+  TABLE_COLUMNS.forEach(c => {
+    const arrow = c.sortable ? (sortKey === c.key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅') : '';
+    html += `<th class="${c.num ? 'num' : ''}" data-sort="${c.sortable ? c.key : ''}">${escapeHtml(c.label)}${arrow}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  if (!pageRows.length) {
+    html += `<tr><td colspan="${TABLE_COLUMNS.length}" class="empty">No records for the current filters.</td></tr>`;
+  } else {
+    pageRows.forEach(r => {
+      html += '<tr>';
+      TABLE_COLUMNS.forEach(c => {
+        const val = c.render ? c.render(r) : (r[c.key] ?? '—');
+        html += `<td class="${c.num ? 'num' : ''}">${escapeHtml(val)}</td>`;
+      });
+      html += '</tr>';
+    });
+  }
+  html += '</tbody>';
+
+  table.innerHTML = html;
+
+  table.querySelectorAll('th[data-sort]').forEach(th => {
+    const k = th.getAttribute('data-sort');
+    if (!k) return;
+    th.addEventListener('click', () => {
+      if (pageState.sortKey === k) pageState.sortDir = pageState.sortDir === 'asc' ? 'desc' : 'asc';
+      else { pageState.sortKey = k; pageState.sortDir = 'asc'; }
+      renderTable(key, rows, pageState);
+    });
+  });
+
+  pager.innerHTML = `
+    <span>${sorted.length.toLocaleString()} records</span>
+    <button ${pageState.page <= 1 ? 'disabled' : ''} onclick="changePage('${key}', -1)">Prev</button>
+    <span>Page ${pageState.page} / ${totalPages}</span>
+    <button ${pageState.page >= totalPages ? 'disabled' : ''} onclick="changePage('${key}', 1)">Next</button>
+  `;
+}
+
+const platformPageState = {
+  swiggy: { page: 1, pageSize: 50, sortKey: 'poDate', sortDir: 'desc' },
+  zepto:  { page: 1, pageSize: 50, sortKey: 'poDate', sortDir: 'desc' },
+  blinkit:{ page: 1, pageSize: 50, sortKey: 'poDate', sortDir: 'desc' },
+  amazon: { page: 1, pageSize: 50, sortKey: 'poDate', sortDir: 'desc' }
+};
+
+function changePage(key, delta) {
+  const ps = key === 'overall' ? state.overall : platformPageState[key];
+  ps.page += delta;
+  refreshAll();
+}
+
+/* =========================================================================
+   16. FILTER OPTIONS
+   ========================================================================= */
+function fillFilterOptions(rows, prefix) {
+  const set = (id, values, label) => {
+    const el = $(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = `<option>All</option>` + values.map(v => `<option>${escapeHtml(v)}</option>`).join('');
+    el.value = values.includes(cur) || cur === 'All' ? cur : 'All';
+  };
+
+  set(prefix.city, [...new Set(rows.map(r => r.city).filter(Boolean))].sort());
+  set(prefix.category, [...new Set(rows.map(r => r.category).filter(Boolean))].sort());
+  set(prefix.status, [...new Set(rows.map(r => r.status).filter(Boolean))].sort());
+}
+
+/* =========================================================================
+   17. RENDER / REFRESH
+   ========================================================================= */
+function refreshAll() {
+  const all = allOverallRows();
+
+  // Overall summary of platform import status
+  const summaryLines = PLATFORMS.map(k => {
+    const st = state.platforms[k];
+    if (!st.rows.length) {
+      return `<span class="pill warn">${PLATFORM_LABELS[k]}: no data uploaded</span>`;
+    }
+    return `<span class="pill ok">${PLATFORM_LABELS[k]}: ${st.rows.length.toLocaleString()} records</span>
+            <span style="font-size:11.5px;color:#667085">${escapeHtml(st.fileName)} • ${st.importedAt ? st.importedAt.toLocaleString() : ''}</span>`;
+  }).join('<br>');
+  $('overallPlatformSummary').innerHTML = summaryLines;
+
+  // Overall filters
+  const ovRowsAll = all;
+  fillFilterOptions(ovRowsAll, { city: 'ovCity', category: 'ovCategory', status: 'ovStatus' });
+
+  const ovFiltered = applyOverallFilters(ovRowsAll);
+  renderOverallKpis(ovFiltered);
+  renderOverallCharts(ovFiltered);
+  renderTable('overall', ovFiltered, state.overall);
+
+  // Each platform tab
+  PLATFORMS.forEach(key => {
+    const rows = state.platforms[key].rows;
+
+    if (rows.length) {
+      $(`kpis-${key}`).innerHTML = (() => {
+        const s = summarise(rows);
+        return [
+          kpiCard('PO Tons', fmtTons(s.poTons), `${s.total} records`),
+          kpiCard('GRN Tons', fmtTons(s.grnTons), ''),
+          kpiCard('Open PO Tons', fmtTons(s.openTons), ''),
+          kpiCard('Fill Rate', fmtPct(s.fillRate), ''),
+          kpiCard('Delivered', s.delivered, ''),
+          kpiCard('Cancelled', s.cancelled, ''),
+          kpiCard('Expired', s.expired, ''),
+          kpiCard('Last import', state.platforms[key].importedAt ? state.platforms[key].importedAt.toLocaleDateString() : '—', '')
+        ].join('');
+      })();
+
+      fillFilterOptions(rows, { city: `city-${key}`, category: `cat-${key}`, status: `status-${key}` });
+
+      const filtered = applyPlatformFilters(rows, key);
+      renderPlatformCharts(key, filtered);
+      renderTable(key, filtered, platformPageState[key]);
+    } else {
+      $(`kpis-${key}`).innerHTML = kpiCard('Status', 'No data uploaded', 'Upload a file above to begin.');
+      renderPlatformCharts(key, []);
+      renderTable(key, [], platformPageState[key]);
+    }
+  });
+}
+
+/* =========================================================================
+   18. FILTER EVENTS
+   ========================================================================= */
+function resetOverallFilters() {
+  state.overall.filters = { platform: 'All', city: 'All', category: 'All', status: 'All', from: '', to: '', search: '' };
+  ['ovPlatform','ovCity','ovCategory','ovStatus'].forEach(id => { if ($(id)) $(id).value = 'All'; });
+  ['ovFrom','ovTo','ovSearch'].forEach(id => { if ($(id)) $(id).value = ''; });
+  state.overall.page = 1;
+  refreshAll();
+}
+
+function resetPlatformFilters(key) {
+  ['city', 'cat', 'status'].forEach(p => { const el = $(`${p}-${key}`); if (el) el.value = 'All'; });
+  ['from', 'to', 'search'].forEach(p => { const el = $(`${p}-${key}`); if (el) el.value = ''; });
+  platformPageState[key].page = 1;
+  refreshAll();
+}
+
+function bindFilterEvents() {
+  // Overall
+  const bind = (id, prop) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      state.overall.filters[prop] = el.value;
+      state.overall.page = 1;
+      refreshAll();
+    });
+    el.addEventListener('change', () => {
+      state.overall.filters[prop] = el.value;
+      state.overall.page = 1;
+      refreshAll();
+    });
+  };
+  bind('ovPlatform', 'platform');
+  bind('ovCity', 'city');
+  bind('ovCategory', 'category');
+  bind('ovStatus', 'status');
+  bind('ovFrom', 'from');
+  bind('ovTo', 'to');
+  bind('ovSearch', 'search');
+
+  // Platform tabs
+  PLATFORMS.forEach(key => {
+    ['city', 'cat', 'status', 'from', 'to', 'search'].forEach(p => {
+      const el = $(`${p}-${key}`);
+      if (!el) return;
+      el.addEventListener('input', () => { platformPageState[key].page = 1; refreshAll(); });
+      el.addEventListener('change', () => { platformPageState[key].page = 1; refreshAll(); });
+    });
+  });
+}
+
+/* =========================================================================
+   19. EXPORT
+   ========================================================================= */
+function exportTable(key, format) {
+  let rows;
+  if (key === 'overall') rows = applyOverallFilters(allOverallRows());
+  else rows = applyPlatformFilters(state.platforms[key].rows, key);
+
+  const data = rows.map(r => ({
+    Platform: r.platformLabel,
+    'PO Number': r.poNumber,
+    'PO Date': iso(r.poDate),
+    Expiry: iso(r.expiryDate),
+    Status: r.status,
+    'Raw Status': r.rawStatus,
+    City: r.city,
+    Category: r.category,
+    SKU: r.sku,
+    Product: r.product,
+    'PO Tons': r.poTons,
+    'GRN Tons': r.grnTons,
+    'Open Tons': r.openTons,
+    'Fill Rate %': r.poTons === 0 ? 'N/A' : (r.grnTons / r.poTons * 100).toFixed(2),
+    Vendor: r.vendor
+  }));
+
+  if (!data.length) { alert('No rows to export.'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(data);
+
+  if (format === 'xlsx') {
+    XLSX.utils.book_append_sheet(wb, ws, 'PO_MIS');
+    XLSX.writeFile(wb, `${key}-po-mis.xlsx`);
+  } else {
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${key}-po-mis.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+}
+
+/* =========================================================================
+   20. TAB SWITCHING
+   ========================================================================= */
+function setActiveTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll('#topTabs .tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+
+  if (tab === 'overall') {
+    $('tab-overall').style.display = 'block';
+  } else {
+    $('tab-platform').style.display = 'block';
+    // show only the selected platform's panels by rebuilding inner content order
+    showPlatformOnly(tab);
+  }
+}
+
+function showPlatformOnly(key) {
+  const host = $('tab-platform');
+  // Rebuild the pane DOM if it does not already contain this platform's markup
+  if (!host.querySelector(`#drop-${key}`)) {
+    buildPlatformPanes();
+  }
+
+  // Toggle visibility of platform-specific panels
+  PLATFORMS.forEach(k => {
+    const drop = $(`drop-${k}`);
+    if (!drop) return;
+    const panel = drop.closest('.panel');
+    if (panel) panel.style.display = k === key ? 'block' : 'none';
+  });
+
+  // The KPI/chart/table panels are siblings after the upload panel.
+  // Hide all platform KPI/chart/table groups except the selected one.
+  PLATFORMS.forEach(k => {
+    const kpi = $(`kpis-${k}`);
+    if (kpi) kpi.style.display = k === key ? '' : 'none';
+  });
+
+  // Charts and tables: scope by canvas/table IDs
+  host.querySelectorAll('.chart-grid').forEach(grid => {
+    const canvas = grid.querySelector('canvas');
+    if (!canvas) return;
+    const id = canvas.id;
+    const belongsTo = PLATFORMS.find(k => id.endsWith(k));
+    grid.style.display = (!belongsTo || belongsTo === key) ? '' : 'none';
+  });
+
+  host.querySelectorAll('.table-wrap, .pager, .filter-actions').forEach(el => {
+    // Keep only those that reference the selected key
+    const txt = el.id || '';
+    const belongsTo = PLATFORMS.find(k => txt.endsWith(k));
+    if (belongsTo) el.style.display = belongsTo === key ? '' : 'none';
+  });
+}
+
+/* =========================================================================
+   21. INIT
+   ========================================================================= */
+function init() {
+  buildPlatformPanes();
+
+  document.querySelectorAll('#topTabs .tab').forEach(btn => {
+    btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+  });
+
+  bindFilterEvents();
+  setActiveTab('overall');
+  refreshAll();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
 </body>
 </html>
