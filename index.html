@@ -8,13 +8,66 @@
   <!-- Choices.js for Multi-Select Dropdowns -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
   
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: #f1f5f9; color: #1e293b; padding-bottom: 2rem; }
+
+    /* Header */
+    header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #fff; border-bottom: 1px solid #e2e8f0; margin-bottom: 2rem; }
+    header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;}
+    .live-dot { width: 8px; height: 8px; background-color: #16a34a; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2); }
+    .header-right { font-size: 0.85rem; font-weight: 600; color: #64748b; letter-spacing: 0.5px; }
+
+    /* Layout */
+    .container { max-width: 1400px; margin: 0 auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 1.5rem; }
+    .card { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 1.25rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+
+    /* Upload */
+    .upload-section h2 { font-size: 1rem; margin-bottom: 1rem; color: #0f172a; }
+    .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .upload-box { border: 1px dashed #cbd5e1; border-radius: 6px; padding: 1.25rem; background: #f8fafc; }
+    .upload-box h3 { font-size: 0.9rem; color: #334155; margin-bottom: 0.75rem; font-weight: 600; }
+    .upload-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;}
+    .btn-upload { background: #fff; border: 1px solid #cbd5e1; padding: 0.4rem 0.8rem; border-radius: 4px; font-size: 0.85rem; cursor: pointer; font-weight: 500; color: #334155; }
+    .btn-upload:hover { background: #f1f5f9; }
+    .file-name { font-size: 0.85rem; color: #64748b; }
+    .status-msg { font-size: 0.8rem; font-weight: 500; margin-top: 0.5rem; }
+    .status-msg.error { color: #dc2626; }
+    .status-msg.success { color: #16a34a; }
+
+    /* Filters */
+    .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
+    .filter-item label { display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;}
+    .search-box input { width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85rem; color: #0f172a; outline: none; }
+    .search-box input:focus { border-color: #2563eb; }
+    .filter-actions { display: flex; gap: 0.5rem; }
+    .btn-reset { padding: 0.5rem 1rem; border: 1px solid #cbd5e1; background: #fff; border-radius: 4px; font-size: 0.85rem; font-weight: 500; cursor: pointer; color: #0f172a; height: 38px;}
+    .btn-export { padding: 0.5rem 1rem; border: none; background: #0f172a; color: #fff; border-radius: 4px; font-size: 0.85rem; font-weight: 500; cursor: pointer; height: 38px;}
+    .btn-export:hover { background: #1e293b; }
+
+    /* KPI Cards */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+    .kpi-card { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 1rem 1.25rem; }
+    .kpi-label { font-size: 0.7rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; letter-spacing: 0.5px; }
+    .kpi-value { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
+
+    /* Table */
+    .card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1rem; }
+    .card-header h2 { font-size: 1rem; font-weight: 600; color: #0f172a; }
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+    th { background: #f8fafc; padding: 0.75rem 1rem; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0;}
+    td { padding: 0.75rem 1rem; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; color: #334155; }
+    tbody tr:hover { background-color: #f8fafc; }
+
+    /* Choices.js Override */
+    .choices__inner { border-radius: 4px; border: 1px solid #cbd5e1; min-height: 38px; padding: 4px 8px; font-size: 0.85rem; background: #fff; }
+    .choices__list--multiple .choices__item { background-color: #2563eb; border: 1px solid #2563eb; border-radius: 4px; font-size: 0.75rem; padding: 2px 6px; }
+  </style>
 </head>
 <body>
 
-  <!-- Top Navbar -->
   <header>
     <div class="header-left">
       <h1>PO TRACKER <span class="live-dot"></span> LIVE TRACKER</h1>
@@ -27,16 +80,25 @@
   <div class="container">
     <!-- Upload Section -->
     <div class="card upload-section">
-      <h2>Upload Latest Reports</h2>
+      <h2>Upload Latest Reports (Upload BOTH files for full mapping)</h2>
       <div class="upload-grid">
         <div class="upload-box">
-          <h3>PO Data Dump (Excel / CSV)</h3>
+          <h3>1. SKU Master (Active list.xlsx)</h3>
           <div class="upload-controls">
-            <label for="fileInput" class="btn-upload">Choose File</label>
-            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" hidden>
-            <span id="fileName" class="file-name">No file chosen</span>
+            <label for="skuInput" class="btn-upload">Choose SKU File</label>
+            <input type="file" id="skuInput" accept=".csv,.xlsx,.xls" hidden>
+            <span id="skuFileName" class="file-name">No file chosen</span>
           </div>
-          <p id="statusMsg" class="status-msg"></p>
+          <p id="skuStatus" class="status-msg"></p>
+        </div>
+        <div class="upload-box">
+          <h3>2. PO Data Dump (Blinkit open po 28.csv)</h3>
+          <div class="upload-controls">
+            <label for="poInput" class="btn-upload">Choose PO File</label>
+            <input type="file" id="poInput" accept=".csv,.xlsx,.xls" hidden>
+            <span id="poFileName" class="file-name">No file chosen</span>
+          </div>
+          <p id="poStatus" class="status-msg"></p>
         </div>
       </div>
     </div>
@@ -44,6 +106,10 @@
     <!-- Filter Bar -->
     <div class="card filter-section" id="filterSection" style="display:none;">
       <div class="filter-grid">
+        <div class="filter-item">
+          <label>PLATFORM</label>
+          <select id="filterPlatform" multiple></select>
+        </div>
         <div class="filter-item">
           <label>CATEGORY</label>
           <select id="filterCategory" multiple></select>
@@ -74,8 +140,12 @@
         <div class="kpi-value" id="kpiTotalPOs">0</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">TOTAL QTY</div>
+        <div class="kpi-label">TOTAL PO QTY</div>
         <div class="kpi-value" id="kpiTotalQty">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">TOTAL PO VALUE</div>
+        <div class="kpi-value" id="kpiTotalValue">₹0</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">OPEN POs</div>
@@ -86,8 +156,12 @@
         <div class="kpi-value" id="kpiExpired" style="color: #dc2626;">0</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">EXPIRING ≤ 30D</div>
-        <div class="kpi-value" id="kpiExpiring" style="color: #d97706;">0</div>
+        <div class="kpi-label">CANCELLED</div>
+        <div class="kpi-value" id="kpiCancelled" style="color: #64748b;">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">AVG FILL RATE</div>
+        <div class="kpi-value" id="kpiFillRate">0%</div>
       </div>
     </div>
 
@@ -107,8 +181,416 @@
     </div>
   </div>
 
-  <!-- Choices.js Script -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-  <script src="app.js"></script>
+  
+  <script>
+    // --- Global Variables ---
+    let rawPOData = [];
+    let skuMaster = {};
+    let choicesPlatform, choicesCategory, choicesCity, choicesStatus;
+    const today = new Date();
+    today.setHours(0,0,0,0); // For accurate date comparison
+
+    document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+
+    // --- File Upload Logic ---
+    document.getElementById('skuInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      document.getElementById('skuFileName').textContent = file.name;
+      parseFile(file, 'sku');
+    });
+
+    document.getElementById('poInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      document.getElementById('poFileName').textContent = file.name;
+      parseFile(file, 'po');
+    });
+
+    function parseFile(file, type) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const statusEl = type === 'sku' ? 'skuStatus' : 'poStatus';
+      
+      const processData = (data) => {
+        if (type === 'sku') {
+          handleSKUData(data);
+        } else {
+          handlePOData(data);
+        }
+        checkReady();
+      };
+
+      if (ext === 'csv') {
+        Papa.parse(file, {
+          header: true, skipEmptyLines: 'greedy',
+          complete: (results) => processData(results.data),
+          error: (err) => setStatus(statusEl, 'CSV Error: ' + err.message, 'error')
+        });
+      } else if (ext === 'xlsx' || ext === 'xls') {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const wb = XLSX.read(ev.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const data = XLSX.utils.sheet_to_json(ws);
+            processData(data);
+          } catch (err) {
+            setStatus(statusEl, 'Excel Error: ' + err.message, 'error');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    }
+
+    function setStatus(id, msg, cls) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = 'status-msg ' + (cls || '');
+    }
+
+    function cleanKey(str) {
+      return String(str || '').replace(/[\s_]/g, '').toLowerCase();
+    }
+
+    // --- Process SKU Master ---
+    function handleSKUData(data) {
+      let count = 0;
+      data.forEach(row => {
+        const keys = Object.keys(row);
+        const chainKey = keys.find(k => cleanKey(k) === 'chain');
+        const catKey = keys.find(k => cleanKey(k) === 'category');
+        const skuKey = keys.find(k => cleanKey(k) === 'description' || cleanKey(k) === 'skuname');
+        
+        if (chainKey && catKey && skuKey) {
+          const skuName = String(row[skuKey]).trim();
+          if (skuName) {
+            skuMaster[skuName] = {
+              platform: String(row[chainKey]).trim(),
+              category: String(row[catKey]).trim()
+            };
+            count++;
+          }
+        }
+      });
+      setStatus('skuStatus', `Loaded ${count} SKUs for mapping.`, 'success');
+    }
+
+    // --- Process PO Dump ---
+    function handlePOData(data) {
+      if (data.length === 0) return;
+      
+      // Column Mapping Dictionary (handles the raw dump names)
+      const keys = Object.keys(data[0]);
+      const map = {};
+      const aliases = {
+        poNo: ['pono', 'ponumber'],
+        vendorName: ['vendorname'],
+        delLocation: ['dellocation', 'facilityname'],
+        city: ['city', 'shippingcityname'],
+        poDate: ['podate', 'orderdate'],
+        poExpiry: ['poexpiry', 'expirydate'],
+        apptDate: ['appointmentdate'],
+        status: ['status', 'postate'],
+        poQty: ['poqty', 'unitsordered'],
+        grnQty: ['grnqty', 'totalgrnquantity'],
+        poValue: ['povalue', 'totalamount'],
+        skuName: ['skudesc', 'name', 'skuname'],
+        uom: ['uom', 'uomtext']
+      };
+
+      for (const [field, opts] of Object.entries(aliases)) {
+        for (const opt of opts) {
+          const found = keys.find(k => cleanKey(k) === opt);
+          if (found) { map[field] = found; break; }
+        }
+      }
+
+      let parsedCount = 0;
+      rawPOData = data.map(row => {
+        const get = (field) => map[field] ? row[map[field]] : '';
+        const getNum = (field) => Number(String(get(field)).replace(/[^0-9.-]+/g, "")) || 0;
+
+        const sku = String(get('skuName')).trim();
+        const masterInfo = skuMaster[sku] || { platform: 'Unknown', category: 'Unknown' };
+        
+        // Calculate Tons. If UOM contains kg, use it. Otherwise, 1 Qty = 0.001 Ton (fallback)
+        let uomStr = String(get('uom')).toLowerCase();
+        let multiplier = 1;
+        if (uomStr.includes('kg')) multiplier = 1;
+        else if (uomStr.includes('gm') || uomStr.includes('g')) multiplier = 0.001;
+        
+        const poQty = getNum('poQty');
+        const grnQty = getNum('grnQty');
+        const poTons = (poQty * multiplier) / 1000; 
+        const grnTons = (grnQty * multiplier) / 1000;
+
+        const expiryDateStr = get('poExpiry');
+        const expiryDate = expiryDateStr ? new Date(expiryDateStr) : null;
+        const statusStr = String(get('status')).trim();
+        
+        // Logic for Expired
+        let isExpired = false;
+        if (expiryDate && expiryDate < today && statusStr.toLowerCase() !== 'delivered') {
+          isExpired = true;
+        }
+
+        const dateObj = get('poDate') ? new Date(get('poDate')) : null;
+        const monthStr = dateObj ? dateObj.toLocaleString('default', { month: 'short', year: 'numeric' }) : 'N/A';
+
+        if (get('poNo')) parsedCount++;
+
+        return {
+          PONo: String(get('poNo')).trim(),
+          VendorName: String(get('vendorName')).trim(),
+          DelLocation: String(get('delLocation')).trim(),
+          City: String(get('city')).trim(),
+          PODate: get('poDate'),
+          POExpiry: expiryDateStr,
+          ApptDate: get('apptDate'),
+          Status: statusStr,
+          POQty: poQty,
+          GRNQty: grnQty,
+          PoValue: getNum('poValue'),
+          POTons: poTons,
+          GRNTons: grnTons,
+          Category: masterInfo.category,
+          Platform: masterInfo.platform,
+          IsExpired: isExpired,
+          IsCancelled: statusStr.toLowerCase() === 'cancelled',
+          Month: monthStr
+        };
+      }).filter(r => r.PONo);
+
+      setStatus('poStatus', `Loaded ${parsedCount} PO lines.`, 'success');
+    }
+
+    function checkReady() {
+      if (rawPOData.length > 0) {
+        document.getElementById('filterSection').style.display = 'block';
+        document.getElementById('kpiGrid').style.display = 'grid';
+        document.getElementById('mainContent').style.display = 'block';
+        initFilters();
+      }
+    }
+
+    // --- Initialize Filters ---
+    function initFilters() {
+      const platforms = [...new Set(rawPOData.map(r => r.Platform))].sort();
+      const cats = [...new Set(rawPOData.map(r => r.Category))].sort();
+      const cities = [...new Set(rawPOData.map(r => r.City))].sort();
+      const stats = [...new Set(rawPOData.map(r => r.Status))].sort();
+
+      const config = { removeItemButton: true, placeholder: true, placeholderValue: 'All', searchEnabled: true };
+      
+      if (choicesPlatform) choicesPlatform.destroy();
+      if (choicesCategory) choicesCategory.destroy();
+      if (choicesCity) choicesCity.destroy();
+      if (choicesStatus) choicesStatus.destroy();
+
+      choicesPlatform = new Choices('#filterPlatform', { ...config, choices: platforms.map(c => ({ value: c, label: c })) });
+      choicesCategory = new Choices('#filterCategory', { ...config, choices: cats.map(c => ({ value: c, label: c })) });
+      choicesCity = new Choices('#filterCity', { ...config, choices: cities.map(c => ({ value: c, label: c })) });
+      choicesStatus = new Choices('#filterStatus', { ...config, choices: stats.map(s => ({ value: s, label: s })) });
+
+      // Add event listeners
+      document.getElementById('filterPlatform').addEventListener('change', updateDashboard);
+      document.getElementById('filterCategory').addEventListener('change', updateDashboard);
+      document.getElementById('filterCity').addEventListener('change', updateDashboard);
+      document.getElementById('filterStatus').addEventListener('change', updateDashboard);
+      document.getElementById('searchInput').addEventListener('input', updateDashboard);
+
+      updateDashboard();
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      choicesPlatform.removeActiveItems();
+      choicesCategory.removeActiveItems();
+      choicesCity.removeActiveItems();
+      choicesStatus.removeActiveItems();
+      document.getElementById('searchInput').value = '';
+      updateDashboard();
+    });
+
+    // --- Main Dashboard Logic ---
+    function updateDashboard() {
+      const selPlatforms = choicesPlatform.getValue(true);
+      const selCats = choicesCategory.getValue(true);
+      const selCities = choicesCity.getValue(true);
+      const selStatuses = choicesStatus.getValue(true);
+      const searchStr = document.getElementById('searchInput').value.toLowerCase();
+
+      const filtered = rawPOData.filter(r => {
+        if (selPlatforms.length && !selPlatforms.includes(r.Platform)) return false;
+        if (selCats.length && !selCats.includes(r.Category)) return false;
+        if (selCities.length && !selCities.includes(r.City)) return false;
+        if (selStatuses.length && !selStatuses.includes(r.Status)) return false;
+        if (searchStr && !r.PONo.toLowerCase().includes(searchStr) && !r.VendorName.toLowerCase().includes(searchStr)) return false;
+        return true;
+      });
+
+      document.getElementById('rowCount').textContent = `${filtered.length} filtered rows`;
+
+      // --- Update KPIs ---
+      const uniquePOs = new Set(filtered.map(r => r.PONo)).size;
+      const totalQty = filtered.reduce((sum, r) => sum + r.POQty, 0);
+      const totalGRN = filtered.reduce((sum, r) => sum + r.GRNQty, 0);
+      const totalValue = filtered.reduce((sum, r) => sum + r.PoValue, 0);
+      
+      const openPOs = filtered.reduce((sum, r) => sum + Math.max(0, r.POQty - r.GRNQty), 0);
+      const expiredCount = filtered.filter(r => r.IsExpired).length;
+      const cancelledCount = filtered.filter(r => r.IsCancelled).length;
+      
+      const fillRate = totalQty > 0 ? ((totalGRN / totalQty) * 100).toFixed(1) : '0.0';
+
+      document.getElementById('kpiTotalPOs').textContent = uniquePOs.toLocaleString();
+      document.getElementById('kpiTotalQty').textContent = totalQty.toLocaleString();
+      document.getElementById('kpiTotalValue').textContent = '₹' + totalValue.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+      document.getElementById('kpiOpen').textContent = openPOs.toLocaleString();
+      document.getElementById('kpiExpired').textContent = expiredCount.toLocaleString();
+      document.getElementById('kpiCancelled').textContent = cancelledCount.toLocaleString();
+      document.getElementById('kpiFillRate').textContent = fillRate + '%';
+
+      // --- Table Logic: Dynamic Phases ---
+      if (selCats.length === 0 && selCities.length === 0) {
+        document.getElementById('viewTitle').textContent = "Phase 1: Overall Category Level";
+        renderPhase1(filtered);
+      } else if (selCats.length === 1 && selCities.length === 0) {
+        document.getElementById('viewTitle').textContent = `Phase 2: Category & City (${selCats[0]})`;
+        renderPhase2(filtered);
+      } else {
+        document.getElementById('viewTitle').textContent = "Phase 3: Detailed PO Lines";
+        renderPhase3(filtered);
+      }
+    }
+
+    // --- Phase 1: Category | PO | GRN ---
+    function renderPhase1(data) {
+      const cols = ['Category', 'Total PO QTY', 'Total GRN QTY', 'Total PO Value'];
+      document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+      
+      const groups = {};
+      data.forEach(r => {
+        if (!groups[r.Category]) groups[r.Category] = { po: 0, grn: 0, val: 0 };
+        groups[r.Category].po += r.POQty;
+        groups[r.Category].grn += r.GRNQty;
+        groups[r.Category].val += r.PoValue;
+      });
+
+      let html = '';
+      Object.keys(groups).sort().forEach(cat => {
+        html += `<tr>
+          <td><strong>${cat}</strong></td>
+          <td>${groups[cat].po.toLocaleString()}</td>
+          <td>${groups[cat].grn.toLocaleString()}</td>
+          <td>₹${groups[cat].val.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+        </tr>`;
+      });
+      document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="4" style="text-align:center;">No data</td></tr>`;
+    }
+
+    // --- Phase 2: Category | City | PO Tons | GRN Tons | Fill Rate | Open Po | EXPIRED | CANCELLED ---
+    function renderPhase2(data) {
+      const cols = ['Category', 'City', 'PO Tons', 'GRN Tons', 'Fill Rate %', 'Open Po (Qty)', 'EXPIRED', 'CANCELLED'];
+      document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+      
+      const groups = {};
+      data.forEach(r => {
+        const key = r.Category + '|' + r.City;
+        if (!groups[key]) {
+          groups[key] = { cat: r.Category, city: r.City, poT: 0, grnT: 0, poQty: 0, grnQty: 0, open: 0, exp: 0, can: 0 };
+        }
+        groups[key].poT += r.POTons;
+        groups[key].grnT += r.GRNTons;
+        groups[key].poQty += r.POQty;
+        groups[key].grnQty += r.GRNQty;
+        groups[key].open += Math.max(0, r.POQty - r.GRNQty);
+        if (r.IsExpired) groups[key].exp++;
+        if (r.IsCancelled) groups[key].can++;
+      });
+
+      let html = '';
+      Object.values(groups).sort((a,b) => b.poQty - a.poQty).forEach(g => {
+        const fillRate = g.poQty > 0 ? ((g.grnQty / g.poQty) * 100).toFixed(1) : '0.0';
+        html += `<tr>
+          <td><strong>${g.cat}</strong></td>
+          <td>${g.city}</td>
+          <td>${g.poT.toFixed(3)}</td>
+          <td>${g.grnT.toFixed(3)}</td>
+          <td>${fillRate}%</td>
+          <td>${g.open.toLocaleString()}</td>
+          <td style="color:#dc2626; font-weight:600;">${g.exp}</td>
+          <td style="color:#64748b; font-weight:600;">${g.can}</td>
+        </tr>`;
+      });
+      document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="8" style="text-align:center;">No data</td></tr>`;
+    }
+
+    // --- Phase 3: Detailed View ---
+    function renderPhase3(data) {
+      const cols = ['Vendor Name', 'Del Location', 'PO No', 'PO Date', 'PO Expiry', 'Appointment Date', 'Status', 'Sum of PO QTY', 'Sum of Po Value', 'Sum of GRN QTY', 'Fill rate', 'Month'];
+      document.getElementById('tableHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+      
+      const poMap = {};
+      data.forEach(r => {
+        if (!poMap[r.PONo]) {
+          poMap[r.PONo] = { ...r, POQty: 0, PoValue: 0, GRNQty: 0 };
+        }
+        poMap[r.PONo].POQty += r.POQty;
+        poMap[r.PONo].PoValue += r.PoValue;
+        poMap[r.PONo].GRNQty += r.GRNQty;
+      });
+
+      let html = '';
+      Object.values(poMap).sort((a,b) => new Date(b.PODate) - new Date(a.PODate)).forEach(r => {
+        const fillRate = r.POQty > 0 ? ((r.GRNQty / r.POQty) * 100).toFixed(1) : '0.0';
+        
+        let badgeColor = 'background:#f1f5f9; color:#475569;';
+        if (r.Status.toLowerCase() === 'open') badgeColor = 'background:#dcfce7; color:#166534;';
+        else if (r.IsExpired) badgeColor = 'background:#fee2e2; color:#991b1b;';
+        else if (r.IsCancelled) badgeColor = 'background:#e2e8f0; color:#334155;';
+
+        html += `<tr>
+          <td>${r.VendorName}</td>
+          <td>${r.DelLocation}</td>
+          <td><strong>${r.PONo}</strong></td>
+          <td>${r.PODate}</td>
+          <td>${r.POExpiry}</td>
+          <td>${r.ApptDate || '—'}</td>
+          <td><span style="padding:0.25rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600; ${badgeColor}">${r.Status}</span></td>
+          <td><strong>${r.POQty.toLocaleString()}</strong></td>
+          <td>₹${r.PoValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+          <td>${r.GRNQty.toLocaleString()}</td>
+          <td>${fillRate}%</td>
+          <td>${r.Month}</td>
+        </tr>`;
+      });
+      document.getElementById('tableBody').innerHTML = html || `<tr><td colspan="12" style="text-align:center;">No data</td></tr>`;
+    }
+
+    // --- Export CSV ---
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const table = document.getElementById('dataTable');
+      if (!table || table.rows.length <= 1) { alert('No data to export.'); return; }
+      
+      let csvContent = "";
+      for (let i = 0; i < table.rows.length; i++) {
+        let rowData = [];
+        for (let j = 0; j < table.rows[i].cells.length; j++) {
+          rowData.push(`"${table.rows[i].cells[j].innerText}"`);
+        }
+        csvContent += rowData.join(",") + "\n";
+      }
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "PO_Export.csv";
+      link.click();
+    });
+  </script>
 </body>
 </html>
