@@ -14,10 +14,16 @@
     body { background-color: #f1f5f9; color: #1e293b; padding-bottom: 2rem; }
 
     /* Header */
-    header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #fff; border-bottom: 1px solid #e2e8f0; margin-bottom: 2rem; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #fff; border-bottom: 1px solid #e2e8f0; margin-bottom: 0; }
     header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;}
     .live-dot { width: 8px; height: 8px; background-color: #16a34a; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2); }
     .header-right { font-size: 0.85rem; font-weight: 600; color: #64748b; letter-spacing: 0.5px; }
+
+    /* Platform Tabs */
+    .tabs-container { background: #fff; padding: 0 2rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1.5rem; overflow-x: auto; margin-bottom: 2rem; }
+    .tab-btn { padding: 1rem 0; font-size: 0.9rem; font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; }
+    .tab-btn:hover { color: #0f172a; }
+    .tab-btn.active { color: #0f172a; border-bottom-color: #2563eb; }
 
     /* Layout */
     .container { max-width: 1400px; margin: 0 auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 1.5rem; }
@@ -77,6 +83,11 @@
     </div>
   </header>
 
+  <!-- Platform Tabs Navigation -->
+  <div class="tabs-container" id="platformTabs" style="display:none;">
+    <!-- Tabs will be injected here via JS -->
+  </div>
+
   <div class="container">
     <!-- Upload Section -->
     <div class="card upload-section">
@@ -92,11 +103,11 @@
           <p id="skuStatus" class="status-msg"></p>
         </div>
         <div class="upload-box">
-          <h3>2. PO Data Dump (Blinkit open po 28.csv)</h3>
+          <h3>2. PO Data Dumps (Select Multiple Platforms)</h3>
           <div class="upload-controls">
-            <label for="poInput" class="btn-upload">Choose PO File</label>
-            <input type="file" id="poInput" accept=".csv,.xlsx,.xls" hidden>
-            <span id="poFileName" class="file-name">No file chosen</span>
+            <label for="poInput" class="btn-upload">Choose PO File(s)</label>
+            <input type="file" id="poInput" accept=".csv,.xlsx,.xls" multiple hidden>
+            <span id="poFileName" class="file-name">No files chosen</span>
           </div>
           <p id="poStatus" class="status-msg"></p>
         </div>
@@ -106,10 +117,6 @@
     <!-- Filter Bar -->
     <div class="card filter-section" id="filterSection" style="display:none;">
       <div class="filter-grid">
-        <div class="filter-item">
-          <label>PLATFORM</label>
-          <select id="filterPlatform" multiple></select>
-        </div>
         <div class="filter-item">
           <label>CATEGORY</label>
           <select id="filterCategory" multiple></select>
@@ -189,9 +196,10 @@
     // --- Global Variables ---
     let rawPOData = [];
     let skuMaster = {};
-    let choicesPlatform, choicesCategory, choicesCity, choicesStatus;
+    let choicesCategory, choicesCity, choicesStatus;
+    let currentPlatform = 'Overall';
     const today = new Date();
-    today.setHours(0,0,0,0); // For accurate date comparison
+    today.setHours(0,0,0,0); 
 
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
 
@@ -204,23 +212,35 @@
     });
 
     document.getElementById('poInput').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      document.getElementById('poFileName').textContent = file.name;
-      parseFile(file, 'po');
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      document.getElementById('poFileName').textContent = `${files.length} file(s) selected`;
+      
+      let filesProcessed = 0;
+      Array.from(files).forEach(file => {
+        // Detect platform from filename
+        let platform = 'Other';
+        const fname = file.name.toLowerCase();
+        if (fname.includes('blinkit')) platform = 'Blinkit';
+        else if (fname.includes('amazon')) platform = 'Amazon';
+        else if (fname.includes('swiggy')) platform = 'Swiggy';
+        else if (fname.includes('zepto')) platform = 'Zepto';
+        
+        parseFile(file, 'po', platform, () => {
+          filesProcessed++;
+          if (filesProcessed === files.length) checkReady();
+        });
+      });
     });
 
-    function parseFile(file, type) {
+    function parseFile(file, type, platform = 'Overall', callback) {
       const ext = file.name.split('.').pop().toLowerCase();
       const statusEl = type === 'sku' ? 'skuStatus' : 'poStatus';
       
       const processData = (data) => {
-        if (type === 'sku') {
-          handleSKUData(data);
-        } else {
-          handlePOData(data);
-        }
-        checkReady();
+        if (type === 'sku') handleSKUData(data);
+        else handlePOData(data, platform);
+        if (callback) callback();
       };
 
       if (ext === 'csv') {
@@ -260,17 +280,13 @@
       let count = 0;
       data.forEach(row => {
         const keys = Object.keys(row);
-        const chainKey = keys.find(k => cleanKey(k) === 'chain');
         const catKey = keys.find(k => cleanKey(k) === 'category');
         const skuKey = keys.find(k => cleanKey(k) === 'description' || cleanKey(k) === 'skuname');
         
-        if (chainKey && catKey && skuKey) {
+        if (catKey && skuKey) {
           const skuName = String(row[skuKey]).trim();
           if (skuName) {
-            skuMaster[skuName] = {
-              platform: String(row[chainKey]).trim(),
-              category: String(row[catKey]).trim()
-            };
+            skuMaster[skuName] = String(row[catKey]).trim();
             count++;
           }
         }
@@ -278,11 +294,10 @@
       setStatus('skuStatus', `Loaded ${count} SKUs for mapping.`, 'success');
     }
 
-    // --- Process PO Dump ---
-    function handlePOData(data) {
+    // --- Process PO Dumps ---
+    function handlePOData(data, platform) {
       if (data.length === 0) return;
       
-      // Column Mapping Dictionary (handles the raw dump names)
       const keys = Object.keys(data[0]);
       const map = {};
       const aliases = {
@@ -308,63 +323,71 @@
         }
       }
 
-      let parsedCount = 0;
-      rawPOData = data.map(row => {
+      data.forEach(row => {
         const get = (field) => map[field] ? row[map[field]] : '';
         const getNum = (field) => Number(String(get(field)).replace(/[^0-9.-]+/g, "")) || 0;
 
         const sku = String(get('skuName')).trim();
-        const masterInfo = skuMaster[sku] || { platform: 'Unknown', category: 'Unknown' };
+        const category = skuMaster[sku] || 'Unknown';
         
-        // Calculate Tons. If UOM contains kg, use it. Otherwise, 1 Qty = 0.001 Ton (fallback)
+        // Tonnage Calculation
         let uomStr = String(get('uom')).toLowerCase();
-        let multiplier = 1;
-        if (uomStr.includes('kg')) multiplier = 1;
-        else if (uomStr.includes('gm') || uomStr.includes('g')) multiplier = 0.001;
+        let multiplier = 1; 
+        if (uomStr.includes('kg')) {
+           const match = uomStr.match(/([\d.]+)\s*kg/);
+           if (match) multiplier = parseFloat(match[1]);
+        } else if (uomStr.includes('g')) {
+           const match = uomStr.match(/([\d.]+)\s*g/);
+           if (match) multiplier = parseFloat(match[1]) / 1000;
+        }
         
         const poQty = getNum('poQty');
         const grnQty = getNum('grnQty');
         const poTons = (poQty * multiplier) / 1000; 
         const grnTons = (grnQty * multiplier) / 1000;
 
+        // Status & Expiry Logic
         const expiryDateStr = get('poExpiry');
         const expiryDate = expiryDateStr ? new Date(expiryDateStr) : null;
-        const statusStr = String(get('status')).trim();
+        let statusStr = String(get('status')).trim();
         
-        // Logic for Expired
+        // Standardize Status for easier logic
+        let normStatus = statusStr.toLowerCase();
+        if (normStatus.includes('fulfilled')) normStatus = 'delivered';
+        if (normStatus.includes('cancel')) normStatus = 'cancelled';
+
         let isExpired = false;
-        if (expiryDate && expiryDate < today && statusStr.toLowerCase() !== 'delivered') {
+        if (expiryDate && expiryDate < today && normStatus !== 'delivered' && normStatus !== 'cancelled') {
           isExpired = true;
         }
 
         const dateObj = get('poDate') ? new Date(get('poDate')) : null;
         const monthStr = dateObj ? dateObj.toLocaleString('default', { month: 'short', year: 'numeric' }) : 'N/A';
 
-        if (get('poNo')) parsedCount++;
-
-        return {
-          PONo: String(get('poNo')).trim(),
-          VendorName: String(get('vendorName')).trim(),
-          DelLocation: String(get('delLocation')).trim(),
-          City: String(get('city')).trim(),
-          PODate: get('poDate'),
-          POExpiry: expiryDateStr,
-          ApptDate: get('apptDate'),
-          Status: statusStr,
-          POQty: poQty,
-          GRNQty: grnQty,
-          PoValue: getNum('poValue'),
-          POTons: poTons,
-          GRNTons: grnTons,
-          Category: masterInfo.category,
-          Platform: masterInfo.platform,
-          IsExpired: isExpired,
-          IsCancelled: statusStr.toLowerCase() === 'cancelled',
-          Month: monthStr
-        };
-      }).filter(r => r.PONo);
-
-      setStatus('poStatus', `Loaded ${parsedCount} PO lines.`, 'success');
+        if (get('poNo')) {
+          rawPOData.push({
+            Platform: platform,
+            PONo: String(get('poNo')).trim(),
+            VendorName: String(get('vendorName')).trim(),
+            DelLocation: String(get('delLocation')).trim(),
+            City: String(get('city')).trim(),
+            PODate: get('poDate'),
+            POExpiry: expiryDateStr,
+            ApptDate: get('apptDate'),
+            Status: statusStr,
+            POQty: poQty,
+            GRNQty: grnQty,
+            PoValue: getNum('poValue'),
+            POTons: poTons,
+            GRNTons: grnTons,
+            Category: category,
+            IsExpired: isExpired,
+            IsCancelled: normStatus === 'cancelled',
+            NormStatus: normStatus,
+            Month: monthStr
+          });
+        }
+      });
     }
 
     function checkReady() {
@@ -372,31 +395,56 @@
         document.getElementById('filterSection').style.display = 'block';
         document.getElementById('kpiGrid').style.display = 'grid';
         document.getElementById('mainContent').style.display = 'block';
+        setStatus('poStatus', `Successfully processed ${rawPOData.length} PO lines.`, 'success');
+        
+        renderPlatformTabs();
         initFilters();
       }
     }
 
+    // --- Platform Tabs Navigation ---
+    function renderPlatformTabs() {
+      const tabContainer = document.getElementById('platformTabs');
+      tabContainer.style.display = 'flex';
+      
+      const platforms = ['Overall', ...new Set(rawPOData.map(r => r.Platform))].sort();
+      
+      tabContainer.innerHTML = platforms.map(p => 
+        `<button class="tab-btn ${p === currentPlatform ? 'active' : ''}" onclick="switchPlatform('${p}')">${p}</button>`
+      ).join('');
+    }
+
+    window.switchPlatform = function(platform) {
+      currentPlatform = platform;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      // Reset filters when switching tabs to avoid confusion
+      if(choicesCategory) { choicesCategory.removeActiveItems(); choicesCity.removeActiveItems(); choicesStatus.removeActiveItems(); }
+      document.getElementById('searchInput').value = '';
+      
+      initFilters(); // Re-initialize filters for the new platform
+    };
+
     // --- Initialize Filters ---
     function initFilters() {
-      const platforms = [...new Set(rawPOData.map(r => r.Platform))].sort();
-      const cats = [...new Set(rawPOData.map(r => r.Category))].sort();
-      const cities = [...new Set(rawPOData.map(r => r.City))].sort();
-      const stats = [...new Set(rawPOData.map(r => r.Status))].sort();
+      const platformData = currentPlatform === 'Overall' ? rawPOData : rawPOData.filter(r => r.Platform === currentPlatform);
+      
+      const cats = [...new Set(platformData.map(r => r.Category))].sort();
+      const cities = [...new Set(platformData.map(r => r.City))].sort();
+      const stats = [...new Set(platformData.map(r => r.Status))].sort();
 
       const config = { removeItemButton: true, placeholder: true, placeholderValue: 'All', searchEnabled: true };
       
-      if (choicesPlatform) choicesPlatform.destroy();
       if (choicesCategory) choicesCategory.destroy();
       if (choicesCity) choicesCity.destroy();
       if (choicesStatus) choicesStatus.destroy();
 
-      choicesPlatform = new Choices('#filterPlatform', { ...config, choices: platforms.map(c => ({ value: c, label: c })) });
       choicesCategory = new Choices('#filterCategory', { ...config, choices: cats.map(c => ({ value: c, label: c })) });
       choicesCity = new Choices('#filterCity', { ...config, choices: cities.map(c => ({ value: c, label: c })) });
       choicesStatus = new Choices('#filterStatus', { ...config, choices: stats.map(s => ({ value: s, label: s })) });
 
       // Add event listeners
-      document.getElementById('filterPlatform').addEventListener('change', updateDashboard);
       document.getElementById('filterCategory').addEventListener('change', updateDashboard);
       document.getElementById('filterCity').addEventListener('change', updateDashboard);
       document.getElementById('filterStatus').addEventListener('change', updateDashboard);
@@ -406,7 +454,6 @@
     }
 
     document.getElementById('resetBtn').addEventListener('click', () => {
-      choicesPlatform.removeActiveItems();
       choicesCategory.removeActiveItems();
       choicesCity.removeActiveItems();
       choicesStatus.removeActiveItems();
@@ -416,14 +463,14 @@
 
     // --- Main Dashboard Logic ---
     function updateDashboard() {
-      const selPlatforms = choicesPlatform.getValue(true);
       const selCats = choicesCategory.getValue(true);
       const selCities = choicesCity.getValue(true);
       const selStatuses = choicesStatus.getValue(true);
       const searchStr = document.getElementById('searchInput').value.toLowerCase();
 
-      const filtered = rawPOData.filter(r => {
-        if (selPlatforms.length && !selPlatforms.includes(r.Platform)) return false;
+      const platformFiltered = currentPlatform === 'Overall' ? rawPOData : rawPOData.filter(r => r.Platform === currentPlatform);
+
+      const filtered = platformFiltered.filter(r => {
         if (selCats.length && !selCats.includes(r.Category)) return false;
         if (selCities.length && !selCities.includes(r.City)) return false;
         if (selStatuses.length && !selStatuses.includes(r.Status)) return false;
@@ -588,7 +635,7 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "PO_Export.csv";
+      link.download = `PO_Export_${currentPlatform}.csv`;
       link.click();
     });
   </script>
