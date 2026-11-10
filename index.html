@@ -82,6 +82,11 @@ button.light { background: #eef4f0; color: var(--green); border: 1px solid #cfd8
 .mso label { display: flex; gap: 7px; align-items: center; font-weight: normal; font-size: 13px; margin: 0; padding: 4px 3px; cursor: pointer; }
 .mso label:hover { background: #f1f6f2; }
 .mso input { width: auto; }
+.viewer .admin-only { display: none !important; }
+#foot { text-align: center; margin: 22px 0 8px; font-size: 12px; color: var(--muted); }
+#foot a { cursor: pointer; color: var(--green); font-weight: bold; }
+#adminBox { display: none; margin-top: 10px; } #adminBox.show { display: block; }
+#adminBox input { max-width: 260px; display: inline-block; }
 .del { background: #fee4e2; color: #b42318; padding: 5px 10px; font-size: 12px; }
 details.setup { margin-top: 12px; font-size: 13px; } details.setup summary { cursor: pointer; font-weight: bold; color: var(--green); }
 @media(max-width: 800px) {
@@ -101,8 +106,8 @@ details.setup { margin-top: 12px; font-size: 13px; } details.setup summary { cur
     <p>Blinkit • Zepto • Swiggy Instamart • Amazon — Fill rate, Open / Expired / Cancelled POs • City • Category • SKU</p>
   </header>
 
-  <section class="panel">
-    <h2>1. Upload raw PO dumps</h2>
+  <section class="panel admin-only" id="secUpload">
+    <h2>Upload raw PO dumps</h2>
     <p class="note">
       Drop the raw files exactly as downloaded (CSV / XLS / XLSX). The platform is detected automatically from the column names,
       so you can select all files together. Uploading a new file for a platform <b>replaces</b> that platform's older data.
@@ -121,11 +126,12 @@ details.setup { margin-top: 12px; font-size: 13px; } details.setup summary { cur
     <details class="setup"><summary>Shared storage (so everyone with the link sees the data)</summary>
       <p class="note">Paste your Firebase database URL here to test it in this browser. For <b>everybody</b> to see the data, the same URL must be written in the <code>SHARED_DB_URL</code> line at the top of this file (see the setup steps).</p>
       <div class="toolbar"><input id="dbUrl" type="text" placeholder="https://your-project-default-rtdb.firebaseio.com" style="max-width:520px"><button class="light" id="btnDbSave">Save URL</button></div>
+      <div class="toolbar"><input id="dbSecret" type="password" placeholder="Database secret (optional – only if your database is locked)" style="max-width:520px"></div>
     </details>
   </section>
 
   <section class="panel" id="filterPanel">
-    <h2>2. Platform &amp; filters</h2>
+    <h2>Platform &amp; filters</h2>
     <div id="tabs" class="chip-row" aria-label="Platforms"></div>
 
     <div class="filters" style="margin-top:14px">
@@ -142,9 +148,9 @@ details.setup { margin-top: 12px; font-size: 13px; } details.setup summary { cur
     <div class="toolbar">
       <label style="margin:0;font-weight:normal"><input id="fExcl" type="checkbox"> Exclude cancelled tons from fill-rate base</label>
       <button class="light" id="btnReset">Reset filters</button>
-      <button id="btnExport">⬇ Download MIS (Excel)</button>
+      <button id="btnExport" class="admin-only">⬇ Download MIS (Excel)</button>
     </div>
-    <div id="warnBox"></div>
+    <div id="warnBox" class="admin-only"></div>
   </section>
 
   <div id="view-dash">
@@ -230,6 +236,13 @@ details.setup { margin-top: 12px; font-size: 13px; } details.setup summary { cur
     </section>
   </div>
 
+<div id="foot">
+    <a id="lnkAdmin">🔒 Admin</a>
+    <div id="adminBox">
+      <input id="adminPw" type="password" placeholder="Admin passcode"> <button id="btnAdminGo">Login</button>
+      <div id="adminMsg" class="small" style="margin-top:6px"></div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -240,7 +253,12 @@ details.setup { margin-top: 12px; font-size: 13px; } details.setup summary { cur
 // SHARED STORAGE: paste your Firebase Realtime Database URL between the quotes (see setup steps).
 // Example: 'https://po-tracker-123-default-rtdb.asia-southeast1.firebasedatabase.app'
 // Leave empty to keep data only in each person's own browser.
-const SHARED_DB_URL = 'https://po-tracker-99367-default-rtdb.asia-southeast1.firebasedatabase.app/';
+const SHARED_DB_URL = '';
+
+// ADMIN LOGIN: only the admin can upload, delete, download and edit mappings. Everyone else is a read-only viewer.
+// To set your passcode: open the dashboard, click "Admin" at the bottom, type a passcode, press Login – it shows one line.
+// Paste the value it shows between the quotes below.
+const ADMIN_HASH = '';
 
 // DATA INSIDE THIS FILE: filled automatically by the green "Download index.html with data inside" button. Do not edit.
 const EMBEDDED_DATA = null; /*END_EMBEDDED*/
@@ -801,7 +819,7 @@ function renderTabs() {
   mk('Overall', 'Overall (all platforms)', !loaded.length);
   for (const P of PLATFORM_ORDER) mk(P, loaded.includes(P) ? `${P} (${I(S.raw[P].length)})` : `${P} – no file`, !loaded.includes(P));
   for (const P of FUTURE_PLATFORMS) mk(P, `${P} – format not added`, true, 'Send a sample raw dump of this platform to add it');
-  mk('Mapping', '⚙ Mapping & checks', false);
+  if (S.admin) mk('Mapping', '⚙ Mapping & checks', false);
 }
 function showView() {
   const m = S.tab === 'Mapping';
@@ -883,6 +901,7 @@ async function readFile(file) {
   return { P: null, cols: wb.SheetNames.length ? Object.keys(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' })[0] || {}).slice(0, 12) : [] };
 }
 async function loadFiles(fileList) {
+  if (!S.admin) return;
   const log = [];
   for (const f of fileList) {
     try {
@@ -931,11 +950,13 @@ async function fromB64(b64) {
   return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
 }
 async function dbCall(method, path, body) {
-  const r = await fetch(sharedUrl() + '/po/' + path + '.json', { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const sec = S.admin ? String(LS.get('po_db_secret', '') || '') : '';
+  const r = await fetch(sharedUrl() + '/po/' + path + '.json' + (sec ? '?auth=' + encodeURIComponent(sec) : ''), { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
   if (!r.ok) throw new Error('shared database answered ' + r.status);
   return method === 'GET' ? r.json() : null;
 }
 async function persistPlatform(P) {
+  if (!S.admin) throw new Error('viewer mode');
   const rec = { name: S.files[P].name, rows: S.files[P].rows, pos: S.files[P].pos, at: S.files[P].at, z: await toB64(JSON.stringify(S.raw[P])) };
   try { await idbSet('plat:' + P, rec); } catch (e) { console.warn('local save failed', e); }
   if (sharedUrl()) { await dbCall('PUT', 'plat_' + P, rec); return '🟢 saved for everyone (shared)'; }
@@ -948,6 +969,7 @@ async function removePlatform(P) {
 }
 let settingsTimer = null;
 function saveSettings() {
+  if (!S.admin) return;
   const st = { overrides: S.overrides, locMap: S.locMap, statusMap: S.statusMap };
   LS.set('po_overrides', S.overrides); LS.set('po_locmap', S.locMap); LS.set('po_statusmap', S.statusMap);
   clearTimeout(settingsTimer);
@@ -994,13 +1016,14 @@ function renderLoaded() {
        : '🟡 Not shared yet – data is saved only in this browser. To let others see it, click “Download index.html with data inside” and upload that file to GitHub.');
 }
 document.addEventListener('click', async e => {
-  const d = e.target.closest('button[data-del]'); if (!d) return;
+  const d = e.target.closest('button[data-del]'); if (!d || !S.admin) return;
   const P = d.dataset.del;
   if (!confirm(`Delete all ${P} data${sharedUrl() ? ' for everyone' : ''}? This cannot be undone.`)) return;
   try { await removePlatform(P); $('loadLog').innerHTML = `🗑 ${P} data deleted.`; } catch (err) { $('loadLog').innerHTML = '❌ Could not delete: ' + esc(err.message); }
   afterDataChange();
 });
 $('btnShareFile').onclick = async () => {
+  if (!S.admin) return;
   const ps = PLATFORM_ORDER.filter(P => S.raw[P]);
   if (!ps.length) { alert('Load some data first.'); return; }
   let src;
@@ -1018,7 +1041,7 @@ $('btnShareFile').onclick = async () => {
 };
 $('btnRefresh').onclick = async () => { $('loadLog').textContent = 'Refreshing…'; await loadSaved(); $('loadLog').textContent = 'Refreshed.'; afterDataChange(); };
 $('dbUrl').value = LS.get('po_shared_url', '') || '';
-$('btnDbSave').onclick = async () => { LS.set('po_shared_url', $('dbUrl').value.trim()); await loadSaved(); afterDataChange(); };
+$('btnDbSave').onclick = async () => { LS.set('po_shared_url', $('dbUrl').value.trim()); if ($('dbSecret').value) LS.set('po_db_secret', $('dbSecret').value.trim()); await loadSaved(); afterDataChange(); };
 $('files').addEventListener('change', e => { if (e.target.files.length) loadFiles([...e.target.files]); });
 const drop = $('drop');
 ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
@@ -1026,7 +1049,7 @@ const drop = $('drop');
 document.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files.length) loadFiles([...e.dataTransfer.files]); });
 
 /* master upload */
-$('btnMaster').onclick = () => $('masterFile').click();
+$('btnMaster').onclick = () => { if (S.admin) $('masterFile').click(); };
 $('masterFile').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
   try {
@@ -1069,6 +1092,7 @@ function misRows(lines, levels) {
   return out;
 }
 $('btnExport').onclick = () => {
+  if (!S.admin) return;
   if (S.tab === 'Mapping' || !S.lines.length) { alert('Load files and open a platform / Overall tab first.'); return; }
   const ls = filtered(), wb = XLSX.utils.book_new();
   const head = ['POs', 'PO (T)', 'GRN (T)', 'Fill rate', 'Open (T)', 'Expired (T)', 'Cancelled (T)', 'Short-closed (T)'];
@@ -1090,9 +1114,31 @@ $('btnExport').onclick = () => {
   XLSX.writeFile(wb, `PO_MIS_${S.tab}_${$('fAsOn').value}.xlsx`);
 };
 
+/* ---------- admin / viewer ---------- */
+async function sha(txt) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function applyRole() {
+  document.body.classList.toggle('viewer', !S.admin);
+  $('lnkAdmin').textContent = S.admin ? '🔓 Admin mode – click to log out' : '🔒 Admin';
+  renderTabs();
+  if (!S.admin && S.tab === 'Mapping') { S.tab = 'Overall'; showView(); refreshFilterOptions(); render(); }
+}
+$('lnkAdmin').onclick = () => {
+  if (S.admin) { S.admin = false; LS.set('po_admin', ''); applyRole(); return; }
+  $('adminBox').classList.toggle('show');
+};
+$('btnAdminGo').onclick = async () => {
+  const pw = $('adminPw').value; if (!pw) return;
+  let h; try { h = await sha('po-tracker|' + pw); } catch (e) { $('adminMsg').textContent = 'Please open the dashboard from your https GitHub link.'; return; }
+  if (!ADMIN_HASH) { $('adminMsg').innerHTML = 'No passcode is set in the file yet. Paste this line into index.html (replace the existing ADMIN_HASH line), then log in again:<br><code style="word-break:break-all">const ADMIN_HASH = \'' + h + '\';</code>'; return; }
+  if (h === ADMIN_HASH) { S.admin = true; LS.set('po_admin', h); $('adminMsg').textContent = ''; $('adminPw').value = ''; $('adminBox').classList.remove('show'); applyRole(); }
+  else $('adminMsg').textContent = 'Wrong passcode.';
+};
+$('adminPw').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnAdminGo').click(); });
+
 /* ---------- start ---------- */
 $('fAsOn').value = todayISO();
-buildMasterIndex(); renderTabs(); showView(); renderLoaded();
+S.admin = !!ADMIN_HASH && LS.get('po_admin', '') === ADMIN_HASH;
+buildMasterIndex(); applyRole(); showView(); renderLoaded();
 $('kpis').innerHTML = '<div class="status" style="grid-column:1/-1">Loading saved data…</div>';
 if (typeof XLSX === 'undefined') $('loadLog').innerHTML = '<div class="warn">The helper libraries could not be loaded. Please open this page with an internet connection.</div>';
 window.__ready = loadSaved().then(() => { afterDataChange(); if (!S.lines.length) $('kpis').innerHTML = '<div class="status" style="grid-column:1/-1">Upload the raw PO dumps above to see the dashboard.</div>'; });
