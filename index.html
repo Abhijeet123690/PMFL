@@ -71,6 +71,19 @@ button.light { background: #eef4f0; color: var(--green); border: 1px solid #cfd8
 .mini td, .mini th { padding: 6px 8px; font-size: 12px; cursor: default; }
 .mini table { min-width: 0; }
 .mini input, .mini select { padding: 5px 7px; font-size: 12px; }
+
+.ms { position: relative; }
+.msb { width: 100%; text-align: left; background: #fff; color: #202833; border: 1px solid #cfd4dc; border-radius: 7px; padding: 10px; font-weight: normal; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msp { display: none; position: absolute; z-index: 20; top: 100%; left: 0; min-width: 100%; width: max-content; max-width: 340px; background: #fff; border: 1px solid #cfd4dc; border-radius: 8px; box-shadow: 0 6px 20px #10182822; padding: 8px; margin-top: 3px; }
+.msp.show { display: block; }
+.msp input.mss { margin-bottom: 6px; padding: 7px; font-size: 13px; }
+.msa { font-size: 12px; margin-bottom: 4px; } .msa a { color: var(--green); cursor: pointer; font-weight: bold; }
+.mso { max-height: 250px; overflow: auto; }
+.mso label { display: flex; gap: 7px; align-items: center; font-weight: normal; font-size: 13px; margin: 0; padding: 4px 3px; cursor: pointer; }
+.mso label:hover { background: #f1f6f2; }
+.mso input { width: auto; }
+.del { background: #fee4e2; color: #b42318; padding: 5px 10px; font-size: 12px; }
+details.setup { margin-top: 12px; font-size: 13px; } details.setup summary { cursor: pointer; font-weight: bold; color: var(--green); }
 @media(max-width: 800px) {
   body { padding: 10px; }
   .chart-grid { grid-template-columns: 1fr; }
@@ -100,7 +113,14 @@ button.light { background: #eef4f0; color: var(--green); border: 1px solid #cfd8
       <div style="margin-top:8px">…or drag &amp; drop the files here</div>
     </div>
     <div id="loadLog" class="status" style="margin-top:12px">No files loaded yet.</div>
-    <div class="small" style="margin-top:8px">SKU master in use: <span id="masterInfo"></span></div>
+    <div id="loadedTbl" class="table-wrap mini" style="margin-top:10px"></div>
+    <div id="storeInfo" class="small" style="margin-top:8px"></div>
+    <div class="toolbar"><button class="light" id="btnRefresh">↻ Refresh saved data</button></div>
+    <div class="small" style="margin-top:4px">SKU master in use: <span id="masterInfo"></span></div>
+    <details class="setup"><summary>Shared storage (so everyone with the link sees the data)</summary>
+      <p class="note">Paste your Firebase database URL here to test it in this browser. For <b>everybody</b> to see the data, the same URL must be written in the <code>SHARED_DB_URL</code> line at the top of this file (see the setup steps).</p>
+      <div class="toolbar"><input id="dbUrl" type="text" placeholder="https://your-project-default-rtdb.firebaseio.com" style="max-width:520px"><button class="light" id="btnDbSave">Save URL</button></div>
+    </details>
   </section>
 
   <section class="panel" id="filterPanel">
@@ -108,18 +128,11 @@ button.light { background: #eef4f0; color: var(--green); border: 1px solid #cfd8
     <div id="tabs" class="chip-row" aria-label="Platforms"></div>
 
     <div class="filters" style="margin-top:14px">
-      <div><label for="fCity">City</label><select id="fCity"></select></div>
-      <div><label for="fCat">Category</label><select id="fCat"></select></div>
-      <div><label for="fSku">SKU</label><select id="fSku"></select></div>
-      <div><label for="fStatus">PO status</label>
-        <select id="fStatus">
-          <option value="All">All statuses</option>
-          <option value="Open">Open</option>
-          <option value="Expired">Expired</option>
-          <option value="Delivered">Delivered</option>
-          <option value="Cancelled">Cancelled</option>
-        </select>
-      </div>
+      <div id="wrapPlat"><label>Platform</label><div class="ms" id="fPlat"></div></div>
+      <div><label>City</label><div class="ms" id="fCity"></div></div>
+      <div><label>Category</label><div class="ms" id="fCat"></div></div>
+      <div><label>SKU</label><div class="ms" id="fSku"></div></div>
+      <div><label>PO status</label><div class="ms" id="fStatus"></div></div>
       <div><label for="fFrom">PO date from</label><input id="fFrom" type="date"></div>
       <div><label for="fTo">PO date to</label><input id="fTo" type="date"></div>
       <div><label for="fAsOn">As-on date (for expiry)</label><input id="fAsOn" type="date"></div>
@@ -145,6 +158,7 @@ button.light { background: #eef4f0; color: var(--green); border: 1px solid #cfd8
 
     <section class="panel" id="secPlat">
       <h2>Platform-wise summary</h2>
+      <div class="toolbar"><button class="light" data-expand="tPlat" data-mode="all">Expand all</button><button class="light" data-expand="tPlat" data-mode="none">Collapse all</button></div>
       <div class="table-wrap" id="tPlat"></div>
     </section>
 
@@ -169,6 +183,18 @@ button.light { background: #eef4f0; color: var(--green); border: 1px solid #cfd8
       <h2>MIS 4 — City × Category × SKU</h2>
       <div class="toolbar"><button class="light" data-expand="t4" data-mode="all">Expand all</button><button class="light" data-expand="t4" data-mode="none">Collapse all</button></div>
       <div class="table-wrap" id="t4"></div>
+    </section>
+
+    <section class="panel">
+      <h2>MIS 5 — Category × City</h2>
+      <div class="toolbar"><button class="light" data-expand="t5" data-mode="all">Expand all</button><button class="light" data-expand="t5" data-mode="none">Collapse all</button></div>
+      <div class="table-wrap" id="t5"></div>
+    </section>
+
+    <section class="panel">
+      <h2>MIS 6 — Category × City × SKU</h2>
+      <div class="toolbar"><button class="light" data-expand="t6" data-mode="all">Expand all</button><button class="light" data-expand="t6" data-mode="none">Collapse all</button></div>
+      <div class="table-wrap" id="t6"></div>
     </section>
   </div>
 
@@ -209,6 +235,11 @@ button.light { background: #eef4f0; color: var(--green); border: 1px solid #cfd8
 /* =====================================================================
    SETTINGS YOU MAY EDIT (no coding needed – only change the text inside quotes)
    ===================================================================== */
+
+// SHARED STORAGE: paste your Firebase Realtime Database URL between the quotes (see setup steps).
+// Example: 'https://po-tracker-123-default-rtdb.asia-southeast1.firebasedatabase.app'
+// Leave empty to keep data only in each person's own browser.
+const SHARED_DB_URL = '';
 
 // Master data embedded in this file (generated from "Active list - SKU Master.xlsx", sheet "PMFL Master")
 const MASTER_DEFAULT = [{"a":"Amazon","id":"B01L1QNQEI","e":"8906001023036","n":"Gowardhan Ghee Jar, 1L","c":"Ghee","u":1.0,"m":"90200001"},{"a":"Amazon","id":"B01LY9YQHO","e":"8906001023043","n":"Gowardhan Ghee Jar, 500ml","c":"Ghee","u":0.5,"m":"90200002"},{"a":"Amazon","id":"B07HGPG967","e":"8906001023050","n":"Gowardhan Ghee, 200ml Jar","c":"Ghee","u":0.2,"m":"90200003"},{"a":"Amazon","id":"B09GW3JSH7","e":"8906001023098","n":"Gowardhan Ghee, 1ltr PP","c":"Ghee","u":1.0,"m":"90200006"},{"a":"Amazon","id":"B079H9MGBZ","e":"8906001023104","n":"Gowardhan Ghee, 500ml PP","c":"Ghee","u":0.5,"m":"90200007"},{"a":"Amazon","id":"B08YQRWZN1","e":"8906001023449","n":"Gowardhan Premium Swarna Ghee, 1000 ml Jar","c":"Ghee","u":1.0,"m":"90200140"},{"a":"Amazon","id":"B08YRFGTN5","e":"8906001023456","n":"Gowardhan Premium Swarna Ghee, 500 ml Jar","c":"Ghee","u":0.5,"m":"90200141"},{"a":"Amazon","id":"B08YRBX2H5","e":"8906001023463","n":"Gowardhan Premium Swarna Ghee, 200 ml Jar","c":"Ghee","u":0.2,"m":"90200142"},{"a":"Amazon","id":"B09GW3PNGX","e":"8906001023128","n":"Gowardhan Ghee, 1ltr RT Pack","c":"Ghee","u":1.0,"m":"90200180"},{"a":"Amazon","id":"B09GW3MN45","e":"8906001023135","n":"Gowardhan Ghee, 500ml RT Pack","c":"Ghee","u":0.5,"m":"90200181"},{"a":"Amazon","id":"B08CSD24T9","e":"8906001024842","n":"Gowardhan Ghee Festival Pack Container Jar, 2 x 1 L","c":"Ghee","u":2.0,"m":"90200250"},{"a":"Amazon","id":"B08YR7FLSY","e":"8906001024880","n":"Gowardhan Swarna Pure Cow Ghee 1L Pouch","c":"Ghee","u":1.0,"m":"90200270"},{"a":"Amazon","id":"B0GD74Q3SD","e":"8906001025658","n":"Gowardhan Gulab Jamun Mix BIB Box 200g","c":"GJ Mix","u":0.2,"m":"90300009"},{"a":"Amazon","id":"B01M4M7SF6","e":"8906001028017","n":"Gowardhan Gulab Jamun Mix Pouch 200g","c":"GJ Mix","u":0.2,"m":"90300210"},{"a":"Amazon","id":"B0FK4VTV6G","e":"8906001026112","n":"Gowardhan Khushiyan Kaju Pista Roll, 200 gm","c":"Sweets","u":0.2,"m":"90300272"},{"a":"Amazon","id":"B0DG4XWJY3","e":"8906001026044","n":"Gowardhan Khushiyan Kaju Katli 200 gm","c":"Sweets","u":0.2,"m":"90300273"},{"a":"Amazon","id":"B0FK4SMS8M","e":"8906001026051","n":"Gowardhan Khushiyan Malai Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300274"},{"a":"Amazon","id":"B0FK4RNXYR","e":"8906001026068","n":"Gowardhan Khushiyan Kesar Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300275"},{"a":"Amazon","id":"B07HGSBZ7H","e":"8906001020394","n":"Go Cheese Processed Block 200 g","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Amazon","id":"B01DYAM532","e":"8906001020431","n":"Go Cheese Pizza Cheese Block 200g","c":"Cheese","u":0.2,"m":"90500021"},{"a":"Amazon","id":"B01DYALUKQ","e":"8906001020608","n":"Go Cheese Slice 476g (28 Slices)","c":"Cheese","u":0.476,"m":"90500027"},{"a":"Amazon","id":"B07HGPG9KJ","e":"8906001020196","n":"Go Cheese Slice 200g (10 Slices)","c":"Cheese","u":0.2,"m":"90500029"},{"a":"Amazon","id":"B01IA424ZQ","e":"8906001020202","n":"Go Cheese Slice 100g (5 Slices)","c":"Cheese","u":0.1,"m":"90500030"},{"a":"Amazon","id":"B07HGS47MW","e":"8906001020219","n":"Go Mozzarella Block Cheese, 200g","c":"Cheese","u":0.2,"m":"90500055"},{"a":"Amazon","id":"B0B8XPC9B5","e":"8906001022008","n":"Go Mozzarella Dice 500 gm","c":"Cheese","u":0.5,"m":"90500058"},{"a":"Amazon","id":"B07HGRDTBJ","e":"8906001020714","n":"Go Cheese Spread Plain, 200 g","c":"Cheese","u":0.2,"m":"90500059"},{"a":"Amazon","id":"B07HGP7Z8X","e":"8906001021919","n":"Go Cheese Spread Tub Olive N Herbs Jar, 200 g","c":"Cheese","u":0.2,"m":"90500060"},{"a":"Amazon","id":"B01JZNVS26","e":"8906001021926","n":"GO Cheese Spread Tub Jalapeno Jar, 200 g","c":"Cheese","u":0.2,"m":"90500061"},{"a":"Amazon","id":"B084BHP1W6","e":"8906001021933","n":"Go Cheese Spread Tub Garlic Jar, 200 g","c":"Cheese","u":0.2,"m":"90500062"},{"a":"Amazon","id":"B01JZNVS30","e":"8906001021940","n":"Go Cheese Spread - Smoked Paprika, 200g Pack","c":"Cheese","u":0.2,"m":"90500063"},{"a":"Amazon","id":"B084BHN7NG","e":"8906001021957","n":"Go Cheese Spread Tub Four Pepper Jar,  200 g","c":"Cheese","u":0.2,"m":"90500064"},{"a":"Amazon","id":"B01MU3HVDF","e":"8906001020424","n":"Go Pizza Cheese, 400g","c":"Cheese","u":0.4,"m":"90500080"},{"a":"Amazon","id":"B08KY7W9XQ","e":"8906001023807","n":"Go Cheese Mozzarella Blend, 200gm","c":"Cheese","u":0.2,"m":"90500172"},{"a":"Amazon","id":"B07K4K8QNB","e":"8906001023357","n":"Go Cheese Processed Cube Pouch, 200 g","c":"Cheese","u":0.2,"m":"90500210"},{"a":"Amazon","id":"B08L4L3N16","e":"8906001024828","n":"Go Cheese Tri-Angles Plain 160 g","c":"Cheese","u":0.16,"m":"90500370"},{"a":"Amazon","id":"B08KY5DGQ2","e":"8906001024798","n":"Go Four Cheese 200 gm","c":"Cheese","u":0.2,"m":"90500372"},{"a":"Amazon","id":"B01FMCJ4H0","e":"8906001020837","n":"Go Cheese Slice 750g (50 Slices)","c":"Cheese","u":0.75,"m":"90500400"},{"a":"Amazon","id":"B0FK4PL47L","e":"8906001026713","n":"Avatar Protein Wafer Bar 10g Protein - Chocolate 40g","c":"Protien Bars","u":0.04,"m":"90600353"},{"a":"Amazon","id":"B0FK4V7MVH","e":"","n":"Avvatar_10g_Protein_Wafer_Bar_Chocolate_Flavour_320g_Pack_of_8","c":"Protien Bars","u":0.04,"m":"90600353"},{"a":"Amazon","id":"B0G3PR65M9","e":"8906001026720","n":"Avatar Coffee Protein Wafer Bar 10g Protein - Coffee 40g","c":"Protien Bars","u":0.04,"m":"90600366"},{"a":"Amazon","id":"B0GC53TJ2T","e":"8906001027512","n":"Avatar Cheese Protein Wafer Bar 10g Protein - Cheese 40g","c":"Protien Bars","u":0.04,"m":"90600389"},{"a":"Amazon","id":"B0GPQD2W1D","e":"8906001027553","n":"Avatar Tiramisu Protein Wafer Bar 10g Protein - Tiramisu 40g","c":"Protien Bars","u":0.04,"m":"90600393"},{"a":"Amazon","id":"B07HGRVXW5","e":"8906001028444","n":"Go Supremo Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700015"},{"a":"Amazon","id":"B07HGR151N","e":"8906001028222","n":"Go UHT Daily Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700020"},{"a":"Amazon","id":"B01KK49SU8","e":"8906001021278","n":"Gowardhan Paneer - Classic Block, 200g","c":"Paneer","u":0.2,"m":"90800001"},{"a":"Amazon","id":"B084BH77MF","e":"8906001021469","n":"Gowardhan Paneer - Classic Block, 500g","c":"Paneer","u":0.5,"m":"90800004"},{"a":"Amazon","id":"B07HGP7Z8Y","e":"","n":"Go Topp Up Elaichi Milk, 200ml","c":"Beverages","u":0.2,"m":""},{"a":"Amazon","id":"B01N9T04X1","e":"","n":"Go Lassi, 180 ml","c":"Beverages","u":0.18,"m":""},{"a":"Amazon","id":"B01LWNFVMM","e":"","n":"Gowardhan Fresh 'N' Thick Dahi, 400 g","c":"Curd","u":0.4,"m":""},{"a":"Amazon","id":"B01M08DHJA","e":"","n":"Gowardhan Set Curd Jar, 1 Kg","c":"Curd","u":1.0,"m":""},{"a":"Amazon","id":"B07HGS47N1","e":"","n":"Go Butter Milk, 180ml","c":"Beverages","u":0.18,"m":""},{"a":"Amazon","id":"B098QLRFMT","e":"","n":"Gowardhan Topp Up Badam Milk, 200ml","c":"Beverages","u":0.2,"m":""},{"a":"Amazon","id":"B01M0VNKYL","e":"","n":"Gowardhan Fresh 'N' Thick Dahi 200 g","c":"Curd","u":0.2,"m":""},{"a":"Amazon","id":"B01FMCJDEO","e":"","n":"Go Butter Milk - Masala Chaas Ginger and Jeera 200ml Tetra Pack","c":"Beverages","u":0.2,"m":""},{"a":"Amazon","id":"B07HGT9LWD","e":"","n":"Go Fresh Cream, 1 Litre","c":"Fresh Cream","u":1.0,"m":""},{"a":"Big basket","id":"40005948","e":"8906001023036","n":"Gowardhan Ghee Jar, 1L","c":"Ghee","u":1.0,"m":"90200001"},{"a":"Big basket","id":"100003586","e":"8906001023043","n":"Gowardhan Ghee Jar, 500ml","c":"Ghee","u":0.5,"m":"90200002"},{"a":"Big basket","id":"40040304","e":"8906001023050","n":"Gowardhan Ghee, 200ml Jar","c":"Ghee","u":0.2,"m":"90200003"},{"a":"Big basket","id":"219074","e":"8906001023098","n":"Gowardhan Ghee, 1ltr PP","c":"Ghee","u":1.0,"m":"90200006"},{"a":"Big basket","id":"229833","e":"8906001023104","n":"Gowardhan Ghee, 500ml PP","c":"Ghee","u":0.5,"m":"90200007"},{"a":"Big basket","id":"40184304","e":"8906001023449","n":"Gowardhan Premium Swarna Ghee, 1000 ml Jar","c":"Ghee","u":1.0,"m":"90200140"},{"a":"Big basket","id":"40184305","e":"8906001023456","n":"Gowardhan Premium Swarna Ghee, 500 ml Jar","c":"Ghee","u":0.5,"m":"90200141"},{"a":"Big basket","id":"40184306","e":"8906001023463","n":"Gowardhan Premium Swarna Ghee, 200 ml Jar","c":"Ghee","u":0.2,"m":"90200142"},{"a":"Big basket","id":"40220137","e":"8906001023128","n":"Gowardhan Ghee, 1ltr RT Pack","c":"Ghee","u":1.0,"m":"90200180"},{"a":"Big basket","id":"40220136","e":"8906001023135","n":"Gowardhan Ghee, 500ml RT Pack","c":"Ghee","u":0.5,"m":"90200181"},{"a":"Big basket","id":"40198389","e":"8906001024842","n":"Gowardhan Ghee Festival Pack Container Jar, 2 x 1 L","c":"Ghee","u":2.0,"m":"90200250"},{"a":"Big basket","id":"40294903","e":"","n":"Gowardhan pure-cow-ghee-rich-source-of-vitamins-beta-carotene 2 L Jar","c":"Ghee","u":2.0,"m":"90200250"},{"a":"Big basket","id":"40210681","e":"8906001024880","n":"Gowardhan Swarna Pure Cow Ghee 1L Pouch","c":"Ghee","u":1.0,"m":"90200270"},{"a":"Big basket","id":"40280254","e":"8906001025641","n":"Gowardhan Cow Ghee 750 ml Pouch","c":"Ghee","u":0.75,"m":"90200289"},{"a":"Big basket","id":"40053314","e":"","n":"Gowardhan pure-cow-ghee 5 L Jar Bucket","c":"Ghee","u":5.0,"m":"90200306"},{"a":"Big basket","id":"40352291","e":"8906001026112","n":"Gowardhan Khushiyan Kaju Pista Roll, 200 gm","c":"Sweets","u":0.2,"m":"90300272"},{"a":"Big basket","id":"40350661","e":"8906001026044","n":"Gowardhan Khushiyan Kaju Katli 200 gm","c":"Sweets","u":0.2,"m":"90300273"},{"a":"Big basket","id":"40352290","e":"8906001026051","n":"Gowardhan Khushiyan Malai Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300274"},{"a":"Big basket","id":"40352289","e":"8906001026068","n":"Gowardhan Khushiyan Kesar Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300275"},{"a":"Big basket","id":"40005957","e":"8906001021209","n":"Go Natural Cheese Orange Mild Chedder 200 gm Block","c":"Cheese","u":0.2,"m":"90500000"},{"a":"Big basket","id":"274423","e":"","n":"Go mozzarella-cheese-diced-made-from-cows-milk 2 kg Pouch","c":"Cheese","u":2.0,"m":"90500002"},{"a":"Big basket","id":"40005955","e":"8906001021193","n":"Go Natural Cheese Montero Jack 200 gm Block","c":"Cheese","u":0.2,"m":"90500008"},{"a":"Big basket","id":"40005936","e":"8906001021186","n":"Go Natural Cheese Colby 200 gm Block","c":"Cheese","u":0.2,"m":"90500010"},{"a":"Big basket","id":"40005959","e":"8906001020868","n":"Go Natural Cheese Shredded Pasta Italiana 150 gm","c":"Cheese","u":0.15,"m":"90500014"},{"a":"Big basket","id":"100400954","e":"8906001020967","n":"Go Natural Cheese Shredded Mexican 150 gm","c":"Cheese","u":0.15,"m":"90500015"},{"a":"Big basket","id":"100400956","e":"8906001020851","n":"Go Natural Cheese Shredded Pizza Italiana 150 gm","c":"Cheese","u":0.15,"m":"90500016"},{"a":"Big basket","id":"227171","e":"","n":"Go processed-cheese-made-from-100-fresh-cows-milk 1 kg Carton","c":"Cheese","u":1.0,"m":"90500017"},{"a":"Big basket","id":"258594","e":"","n":"Gowardhan processed-cheese-block-made-from-cows-milk 200 g Carton","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Big basket","id":"100309132","e":"8906001020394","n":"Go Cheese Processed Block 200 g","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Big basket","id":"40076798","e":"","n":"Go pizza-cheese-block-made-from-cows-milk 1 kg Carton","c":"Cheese","u":1.0,"m":"90500020"},{"a":"Big basket","id":"262712","e":"8906001020431","n":"Go Cheese Pizza Cheese Block 200g","c":"Cheese","u":0.2,"m":"90500021"},{"a":"Big basket","id":"100405167","e":"8906001020608","n":"Go Cheese Slice 476g (28 Slices)","c":"Cheese","u":0.476,"m":"90500027"},{"a":"Big basket","id":"100356589","e":"8906001020196","n":"Go Cheese Slice 200g (10 Slices)","c":"Cheese","u":0.2,"m":"90500029"},{"a":"Big basket","id":"40005949","e":"8906001020202","n":"Go Cheese Slice 100g (5 Slices)","c":"Cheese","u":0.1,"m":"90500030"},{"a":"Big basket","id":"30000890","e":"8906001020219","n":"Go Mozzarella Block Cheese, 200g","c":"Cheese","u":0.2,"m":"90500055"},{"a":"Big basket","id":"40198395","e":"8906001022008","n":"Go Mozzarella Dice 500 gm","c":"Cheese","u":0.5,"m":"90500058"},{"a":"Big basket","id":"40005967","e":"8906001020714","n":"Go Cheese Spread Plain, 200 g","c":"Cheese","u":0.2,"m":"90500059"},{"a":"Big basket","id":"40005964","e":"8906001021919","n":"Go Cheese Spread Tub Olive N Herbs Jar, 200 g","c":"Cheese","u":0.2,"m":"90500060"},{"a":"Big basket","id":"40005963","e":"8906001021926","n":"GO Cheese Spread Tub Jalapeno Jar, 200 g","c":"Cheese","u":0.2,"m":"90500061"},{"a":"Big basket","id":"40005962","e":"8906001021933","n":"Go Cheese Spread Tub Garlic Jar, 200 g","c":"Cheese","u":0.2,"m":"90500062"},{"a":"Big basket","id":"40005965","e":"8906001021940","n":"Go Cheese Spread - Smoked Paprika, 200g Pack","c":"Cheese","u":0.2,"m":"90500063"},{"a":"Big basket","id":"40005966","e":"8906001021957","n":"Go Cheese Spread Tub Four Pepper Jar,  200 g","c":"Cheese","u":0.2,"m":"90500064"},{"a":"Big basket","id":"40087555","e":"8906001020424","n":"Go Pizza Cheese, 400g","c":"Cheese","u":0.4,"m":"90500080"},{"a":"Big basket","id":"40005952","e":"","n":"Go processed-cheese-block-made-from-cows-milk 400 g Carton","c":"Cheese","u":0.4,"m":"90500080"},{"a":"Big basket","id":"40198394","e":"8906001023807","n":"Go Cheese Mozzarella Blend, 200gm","c":"Cheese","u":0.2,"m":"90500172"},{"a":"Big basket","id":"40126628","e":"8906001023357","n":"Go Cheese Processed Cube Pouch, 200 g","c":"Cheese","u":0.2,"m":"90500210"},{"a":"Big basket","id":"40204175","e":"8906001024828","n":"Go Cheese Tri-Angles Plain 160 g","c":"Cheese","u":0.16,"m":"90500370"},{"a":"Big basket","id":"40198392","e":"8906001024798","n":"Go Four Cheese 200 gm","c":"Cheese","u":0.2,"m":"90500372"},{"a":"Big basket","id":"40327063","e":"8906001024620","n":"Cheese Mozzarella & Cheddar Blend 1kg","c":"Cheese","u":1.0,"m":"90500392"},{"a":"Big basket","id":"40327064","e":"8906001024972","n":"Go Cheese Mozzarella Shredded Cheese 1kg","c":"Cheese","u":1.0,"m":"90500393"},{"a":"Big basket","id":"100369165","e":"8906001020837","n":"Go Cheese Slice 750g (50 Slices)","c":"Cheese","u":0.75,"m":"90500400"},{"a":"Big basket","id":"40359270","e":"8906001026713","n":"Avatar Protein Wafer Bar 10g Protein - Chocolate 40g","c":"Protien Bars","u":0.04,"m":"90600353"},{"a":"Big basket","id":"40359271","e":"8906001026720","n":"Avatar Coffee Protein Wafer Bar 10g Protein - Coffee 40g","c":"Protien Bars","u":0.04,"m":"90600366"},{"a":"Big basket","id":"40359272","e":"8906001027512","n":"Avatar Cheese Protein Wafer Bar 10g Protein - Cheese 40g","c":"Protien Bars","u":0.04,"m":"90600389"},{"a":"Big basket","id":"40364492","e":"8906001027553","n":"Avatar Tiramisu Protein Wafer Bar 10g Protein - Tiramisu 40g","c":"Protien Bars","u":0.04,"m":"90600393"},{"a":"Big basket","id":"40053404","e":"8906001028444","n":"Go Supremo Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700015"},{"a":"Big basket","id":"40005951","e":"8906001028222","n":"Go UHT Daily Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700020"},{"a":"Big basket","id":"40287140","e":"","n":"Go UHT Daily Milk, 180 ml","c":"UHT Milk","u":0.18,"m":"90700120"},{"a":"Big basket","id":"40005958","e":"8906001021278","n":"Gowardhan Paneer - Classic Block, 200g","c":"Paneer","u":0.2,"m":"90800001"},{"a":"Big basket","id":"40124215","e":"8906001021421","n":"Gowardhan Frozen Paneer Cubes, 200g","c":"Paneer","u":0.2,"m":"90800003"},{"a":"Big basket","id":"40076791","e":"8906001021469","n":"Gowardhan Paneer - Classic Block, 500g","c":"Paneer","u":0.5,"m":"90800004"},{"a":"Big basket","id":"40005941","e":"","n":"Gowardhan dahi-fresh-n-thick 400 g Cup","c":"Curd","u":0.4,"m":""},{"a":"Big basket","id":"40005968","e":"","n":"Gowardhan topp-up-milk-elaichi 200 ml Bottle","c":"Beverages","u":0.2,"m":""},{"a":"Big basket","id":"40216112","e":"","n":"Gowardhan gow-rich-thick-tm-pouch-curd 1 Kg Pouch","c":"Curd","u":1.0,"m":""},{"a":"Big basket","id":"40076796","e":"","n":"Gowardhan topp-up-butter-scoth 200 ml","c":"Beverages","u":0.2,"m":""},{"a":"Big basket","id":"40216114","e":"","n":"Gowardhan gow-rich-thick-dahi 200 g","c":"Curd","u":0.2,"m":""},{"a":"Big basket","id":"30009779","e":"","n":"Go butter-milk-ginger-jeera-spiced 180 ml Carton","c":"Beverages","u":0.2,"m":""},{"a":"Big basket","id":"30010324","e":"","n":"Go cream-fresh 1 L Carton","c":"Fresh Cream","u":1.0,"m":""},{"a":"Big basket","id":"30010323","e":"","n":"Go cream-fresh 200 ml Carton","c":"Fresh Cream","u":0.2,"m":""},{"a":"Big basket","id":"40076790","e":"","n":"Go lassi-deliciously-thick-calcium-rich 180 ml","c":"Beverages","u":0.18,"m":""},{"a":"Big basket","id":"40076795","e":"","n":"Gowardhan topp-up-pista 200 ml","c":"Beverages","u":0.2,"m":""},{"a":"Big basket","id":"40005971","e":"","n":"Gowardhan topp-up-milk-strawberry 200 ml Bottle","c":"Beverages","u":0.2,"m":""},{"a":"Big basket","id":"40005970","e":"","n":"Gowardhan topp-up-milk-rose 200 ml Bottle","c":"Beverages","u":0.2,"m":""},{"a":"Big basket","id":"40005969","e":"","n":"Gowardhan topp-up-milk-mango 200 ml Bottle","c":"Beverages","u":0.2,"m":""},{"a":"Big basket","id":"40302074","e":"","n":"Go thick-a-licious-coffee-milkshake 180 ml","c":"Beverages","u":0.18,"m":""},{"a":"Big basket","id":"40076797","e":"","n":"Go badam-milk 180 ml","c":"Beverages","u":0.18,"m":""},{"a":"Big basket","id":"40076792","e":"","n":"Gowardhan dahi 1 kg Tub","c":"Curd","u":1.0,"m":""},{"a":"Big basket","id":"40274236","e":"","n":"Pride Of Cows curd-made-from-fresh-milk-thick-creamy-no-preservatives 320 g Jar","c":"POC","u":0.32,"m":""},{"a":"Big basket","id":"40274235","e":"","n":"Pride Of Cows paneer-made-from-fresh-milk-soft-creamy-no-preservatives 200 g","c":"POC","u":0.2,"m":""},{"a":"Big basket","id":"40210680","e":"","n":"Pride of Cow pure-cow-ghee-single-origin 500 ml Jar","c":"POC","u":0.5,"m":""},{"a":"Big basket","id":"40210591","e":"","n":"Pride of Cow pure-cow-ghee-single-origin 1 L Jar","c":"POC","u":1.0,"m":""},{"a":"Blinkit","id":"10005193","e":"8906001023036","n":"Gowardhan Ghee Jar, 1L","c":"Ghee","u":1.0,"m":"90200001"},{"a":"Blinkit","id":"10008266","e":"8906001023043","n":"Gowardhan Ghee Jar, 500ml","c":"Ghee","u":0.5,"m":"90200002"},{"a":"Blinkit","id":"10017770","e":"8906001023050","n":"Gowardhan Ghee, 200ml Jar","c":"Ghee","u":0.2,"m":"90200003"},{"a":"Blinkit","id":"10006784","e":"8906001023098","n":"Gowardhan Ghee, 1ltr PP","c":"Ghee","u":1.0,"m":"90200006"},{"a":"Blinkit","id":"10006785","e":"8906001023104","n":"Gowardhan Ghee, 500ml PP","c":"Ghee","u":0.5,"m":"90200007"},{"a":"Blinkit","id":"10055657","e":"8906001023449","n":"Gowardhan Premium Swarna Ghee, 1000 ml Jar","c":"Ghee","u":1.0,"m":"90200140"},{"a":"Blinkit","id":"10055658","e":"8906001023456","n":"Gowardhan Premium Swarna Ghee, 500 ml Jar","c":"Ghee","u":0.5,"m":"90200141"},{"a":"Blinkit","id":"10055659","e":"8906001023463","n":"Gowardhan Premium Swarna Ghee, 200 ml Jar","c":"Ghee","u":0.2,"m":"90200142"},{"a":"Blinkit","id":"10052000","e":"8906001023128","n":"Gowardhan Ghee, 1ltr RT Pack","c":"Ghee","u":1.0,"m":"90200180"},{"a":"Blinkit","id":"10051999","e":"8906001023135","n":"Gowardhan Ghee, 500ml RT Pack","c":"Ghee","u":0.5,"m":"90200181"},{"a":"Blinkit","id":"10065371","e":"8906001024842","n":"Gowardhan Ghee Festival Pack Container Jar, 2 x 1 L","c":"Ghee","u":2.0,"m":"90200250"},{"a":"Blinkit","id":"10291223","e":"8906001026112","n":"Gowardhan Khushiyan Kaju Pista Roll, 200 gm","c":"Sweets","u":0.2,"m":"90300272"},{"a":"Blinkit","id":"10171630","e":"8906001026044","n":"Gowardhan Khushiyan Kaju Katli 200 gm","c":"Sweets","u":0.2,"m":"90300273"},{"a":"Blinkit","id":"10290192","e":"8906001026051","n":"Gowardhan Khushiyan Malai Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300274"},{"a":"Blinkit","id":"10290193","e":"8906001026068","n":"Gowardhan Khushiyan Kesar Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300275"},{"a":"Blinkit","id":"10016142","e":"8906001021209","n":"Go Natural Cheese Orange Mild Chedder 200 gm Block","c":"Cheese","u":0.2,"m":"90500000"},{"a":"Blinkit","id":"10016138","e":"8906001021186","n":"Go Natural Cheese Colby 200 gm Block","c":"Cheese","u":0.2,"m":"90500010"},{"a":"Blinkit","id":"10016381","e":"8906001020868","n":"Go Natural Cheese Shredded Pasta Italiana 150 gm","c":"Cheese","u":0.15,"m":"90500014"},{"a":"Blinkit","id":"10016393","e":"8906001020967","n":"Go Natural Cheese Shredded Mexican 150 gm","c":"Cheese","u":0.15,"m":"90500015"},{"a":"Blinkit","id":"10016139","e":"8906001020851","n":"Go Natural Cheese Shredded Pizza Italiana 150 gm","c":"Cheese","u":0.15,"m":"90500016"},{"a":"Blinkit","id":"10016216","e":"8906001020424","n":"Go Pizza Cheese, 400g","c":"Cheese","u":0.4,"m":"90500018"},{"a":"Blinkit","id":"10017933","e":"8906001020394","n":"Go Cheese Processed Block 200 g","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Blinkit","id":"10094648","e":"","n":"Processed Cheese Block 200g","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Blinkit","id":"10019174","e":"8906001020431","n":"Go Cheese Pizza Cheese Block 200g","c":"Cheese","u":0.2,"m":"90500021"},{"a":"Blinkit","id":"10019170","e":"8906001020608","n":"Go Cheese Slice 476g (28 Slices)","c":"Cheese","u":0.476,"m":"90500027"},{"a":"Blinkit","id":"10012321","e":"8906001020196","n":"Go Cheese Slice 200g (10 Slices)","c":"Cheese","u":0.2,"m":"90500029"},{"a":"Blinkit","id":"10015787","e":"8906001020202","n":"Go Cheese Slice 100g (5 Slices)","c":"Cheese","u":0.1,"m":"90500030"},{"a":"Blinkit","id":"10015781","e":"8906001020219","n":"Go Mozzarella Block Cheese, 200g","c":"Cheese","u":0.2,"m":"90500055"},{"a":"Blinkit","id":"10078193","e":"8906001022008","n":"Go Mozzarella Dice 500 gm","c":"Cheese","u":0.5,"m":"90500058"},{"a":"Blinkit","id":"10015785","e":"8906001020714","n":"Go Cheese Spread Plain, 200 g","c":"Cheese","u":0.2,"m":"90500059"},{"a":"Blinkit","id":"10015786","e":"8906001021919","n":"Go Cheese Spread Tub Olive N Herbs Jar, 200 g","c":"Cheese","u":0.2,"m":"90500060"},{"a":"Blinkit","id":"10016143","e":"8906001021926","n":"GO Cheese Spread Tub Jalapeno Jar, 200 g","c":"Cheese","u":0.2,"m":"90500061"},{"a":"Blinkit","id":"10015783","e":"8906001021933","n":"Go Cheese Spread Tub Garlic Jar, 200 g","c":"Cheese","u":0.2,"m":"90500062"},{"a":"Blinkit","id":"10015784","e":"8906001021940","n":"Go Cheese Spread - Smoked Paprika, 200g Pack","c":"Cheese","u":0.2,"m":"90500063"},{"a":"Blinkit","id":"10019180","e":"8906001021957","n":"Go Cheese Spread Tub Four Pepper Jar,  200 g","c":"Cheese","u":0.2,"m":"90500064"},{"a":"Blinkit","id":"10148073","e":"8906001023807","n":"Go Cheese Mozzarella Blend, 200gm","c":"Cheese","u":0.2,"m":"90500172"},{"a":"Blinkit","id":"10015782","e":"8906001023357","n":"Go Cheese Processed Cube Pouch, 200 g","c":"Cheese","u":0.2,"m":"90500210"},{"a":"Blinkit","id":"10073543","e":"8906001024828","n":"Go Cheese Tri-Angles Plain 160 g","c":"Cheese","u":0.16,"m":"90500370"},{"a":"Blinkit","id":"10148074","e":"8906001024798","n":"Go Four Cheese 200 gm","c":"Cheese","u":0.2,"m":"90500372"},{"a":"Blinkit","id":"10078190","e":"","n":"Cheese Mozzarella & Cheddar Blend 1kg","c":"Cheese","u":1.0,"m":"90500392"},{"a":"Blinkit","id":"10019171","e":"8906001020837","n":"Go Cheese Slice 750g (50 Slices)","c":"Cheese","u":0.75,"m":"90500400"},{"a":"Blinkit","id":"10282983","e":"8906001026713","n":"Avatar Protein Wafer Bar 10g Protein - Chocolate 40g","c":"Protien Bars","u":0.04,"m":"90600353"},{"a":"Blinkit","id":"10282984","e":"8906001026720","n":"Avatar Coffee Protein Wafer Bar 10g Protein - Coffee 40g","c":"Protien Bars","u":0.04,"m":"90600366"},{"a":"Blinkit","id":"10282691","e":"8906001027512","n":"Avatar Cheese Protein Wafer Bar 10g Protein - Cheese 40g","c":"Protien Bars","u":0.04,"m":"90600389"},{"a":"Blinkit","id":"10282699","e":"8906001027553","n":"Avatar Tiramisu Protein Wafer Bar 10g Protein - Tiramisu 40g","c":"Protien Bars","u":0.04,"m":"90600393"},{"a":"Blinkit","id":"10016239","e":"8906001028444","n":"Go Supremo Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700015"},{"a":"Blinkit","id":"10016235","e":"8906001028222","n":"Go UHT Daily Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700020"},{"a":"Blinkit","id":"10008180","e":"8906001021278","n":"Gowardhan Paneer - Classic Block, 200g","c":"Paneer","u":0.2,"m":"90800001"},{"a":"Blinkit","id":"10016252","e":"8906001021469","n":"Gowardhan Paneer - Classic Block, 500g","c":"Paneer","u":0.5,"m":"90800004"},{"a":"Blinkit","id":"10016168","e":"","n":"Butter milk 200ml","c":"Beverages","u":0.2,"m":""},{"a":"Blinkit","id":"10022963","e":"","n":"Curd 500g","c":"Curd","u":0.5,"m":""},{"a":"Blinkit","id":"10078192","e":"","n":"Fresh cream 200ml","c":"Fresh Cream","u":0.2,"m":""},{"a":"Blinkit","id":"10140836","e":"","n":"Curd 200g","c":"Curd","u":0.2,"m":""},{"a":"Blinkit","id":"10027435","e":"","n":"Lassi 180ml","c":"Beverages","u":0.18,"m":""},{"a":"Blinkit","id":"10016156","e":"","n":"Cup Curd 400g","c":"Curd","u":0.4,"m":""},{"a":"Blinkit","id":"10112274","e":"","n":"POC Fresh Milk","c":"POC","u":0.5,"m":""},{"a":"Blinkit","id":"10110695","e":"","n":"Pride Of Cows paneer-made-from-fresh-milk-soft-creamy-no-preservatives 200 g","c":"POC","u":0.36,"m":""},{"a":"Blinkit","id":"10110694","e":"","n":"POC Paneer","c":"POC","u":0.2,"m":""},{"a":"Blinkit","id":"10164156","e":"","n":"Pride of Cows Cow Ghee","c":"POC","u":0.5,"m":""},{"a":"Blinkit","id":"10185214","e":"","n":"Pride of Cows Cow Ghee","c":"POC","u":1.0,"m":""},{"a":"Blinkit","id":"10164288","e":"","n":"Pride of Cows Cow Ghee","c":"POC","u":1.0,"m":""},{"a":"Blinkit","id":"10241796","e":"","n":"Pride of Cows Low Fat High Protein Paneer(Pouch)","c":"POC","u":0.2,"m":""},{"a":"Blinkit","id":"10245762","e":"","n":"Avvatar Performance Whey Protein (Cold Coffee)(Jar)","c":"Protien Powders","u":1.0,"m":""},{"a":"Blinkit","id":"10245941","e":"","n":"Avvatar Whey Protein (Malai Kulfi)(Jar)","c":"Protien Powders","u":1.0,"m":""},{"a":"Blinkit","id":"10259613","e":"","n":"Avvatar Whey Protein Powder(Jar)","c":"Protien Powders","u":1.0,"m":""},{"a":"Blinkit","id":"10274990","e":"","n":"Avvatar Plastic Gym Shaker(Bottle)","c":"Protien Powders","u":1.0,"m":""},{"a":"Flipkart","id":"GHEEZSUFTUHZVDZH","e":"8906001023036","n":"Gowardhan Ghee Jar, 1L","c":"Ghee","u":1.0,"m":"90200001"},{"a":"Flipkart","id":"GHEEZSUFG4ZF3MT6","e":"8906001023043","n":"Gowardhan Ghee Jar, 500ml","c":"Ghee","u":0.5,"m":"90200002"},{"a":"Flipkart","id":"GHEEZSUFTF7CFPQS","e":"8906001023050","n":"Gowardhan Ghee, 200ml Jar","c":"Ghee","u":0.2,"m":"90200003"},{"a":"Flipkart","id":"GHEEZSUFACVJSSVN","e":"8906001023098","n":"Gowardhan Ghee, 1ltr PP","c":"Ghee","u":1.0,"m":"90200006"},{"a":"Flipkart","id":"GHEEZSUFZKHG4KJB","e":"8906001023104","n":"Gowardhan Ghee, 500ml PP","c":"Ghee","u":0.5,"m":"90200007"},{"a":"Flipkart","id":"GHEFBZCAEJJ283FZ","e":"8906001023456","n":"Gowardhan Premium Swarna Ghee, 500 ml Jar","c":"Ghee","u":0.5,"m":"90200141"},{"a":"Flipkart","id":"GHEFUZ3NTWCTKPJA","e":"8906001023128","n":"Gowardhan Ghee, 1ltr RT Pack","c":"Ghee","u":1.0,"m":"90200180"},{"a":"Flipkart","id":"GHEFUZ3NUYBMQY8M","e":"","n":"Gowardhan Ghee, 1ltr RT Pack","c":"Ghee","u":1.0,"m":"90200180"},{"a":"Flipkart","id":"GHEHHD42Y4JHHWN4","e":"8906001023135","n":"Gowardhan Ghee, 500ml RT Pack","c":"Ghee","u":0.5,"m":"90200181"},{"a":"Flipkart","id":"GHEFUZ3NU7YZMP77","e":"8906001024842","n":"Gowardhan Ghee Festival Pack Container Jar, 2 x 1 L","c":"Ghee","u":2.0,"m":"90200250"},{"a":"Flipkart","id":"GHEFZ4Y7ZX2AJSN7","e":"8906001024880","n":"Gowardhan Swarna Pure Cow Ghee 1L Pouch","c":"Ghee","u":1.0,"m":"90200270"},{"a":"Flipkart","id":"GHEGUT6FPVHYBSB5","e":"8906001025641","n":"Gowardhan Cow Ghee 750 ml Pouch","c":"Ghee","u":0.75,"m":"90200289"},{"a":"Flipkart","id":"SAMHE8Z8WYXZCPGG","e":"8906001026112","n":"Gowardhan Khushiyan Kaju Pista Roll, 200 gm","c":"Sweets","u":0.2,"m":"90300272"},{"a":"Flipkart","id":"SAMH5FJFDYGBQTAK","e":"8906001026044","n":"Gowardhan Khushiyan Kaju Katli 200 gm","c":"Sweets","u":0.2,"m":"90300273"},{"a":"Flipkart","id":"SAMHE8Z8FWYRBJKM","e":"8906001026051","n":"Gowardhan Khushiyan Malai Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300274"},{"a":"Flipkart","id":"SAMHE8Z8FKFGDKMD","e":"8906001026068","n":"Gowardhan Khushiyan Kesar Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300275"},{"a":"Flipkart","id":"CHEEZSU8VTUX66YM","e":"8906001021209","n":"Go Natural Cheese Orange Mild Chedder 200 gm Block","c":"Cheese","u":0.2,"m":"90500000"},{"a":"Flipkart","id":"CHEEZWYRVFCUTXY4","e":"8906001021193","n":"Go Natural Cheese Montero Jack 200 gm Block","c":"Cheese","u":0.2,"m":"90500008"},{"a":"Flipkart","id":"CHEEZWYSDG6P8EYB","e":"8906001021186","n":"Go Natural Cheese Colby 200 gm Block","c":"Cheese","u":0.2,"m":"90500010"},{"a":"Flipkart","id":"CHEEZWYREX9TWPHJ","e":"","n":"Go Plain Processed cheese Block (1 kg)","c":"Cheese","u":1.0,"m":"90500017"},{"a":"Flipkart","id":"CHEEZWYRYH4TJ8BC","e":"","n":"Gowardhan Processed Cheese Block 1 kg CBD.","c":"Cheese","u":1.0,"m":"90500017"},{"a":"Flipkart","id":"CHEEZWYR6RGNUQFT","e":"8906001020394","n":"Go Cheese Processed Block 200 g","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Flipkart","id":"CHEEZWYRGUKKHDPS","e":"8906001020431","n":"Go Cheese Pizza Cheese Block 200g","c":"Cheese","u":0.2,"m":"90500021"},{"a":"Flipkart","id":"CHEEZWYRFED3QZTR","e":"8906001020608","n":"Go Cheese Slice 476g (28 Slices)","c":"Cheese","u":0.476,"m":"90500027"},{"a":"Flipkart","id":"CHEEZWYRZQGXA5FA","e":"8906001020196","n":"Go Cheese Slice 200g (10 Slices)","c":"Cheese","u":0.2,"m":"90500029"},{"a":"Flipkart","id":"CHEEZWYRRWHSMXSY","e":"8906001020202","n":"Go Cheese Slice 100g (5 Slices)","c":"Cheese","u":0.1,"m":"90500030"},{"a":"Flipkart","id":"CHEEZSU9WJCDT7U5","e":"8906001020219","n":"Go Mozzarella Block Cheese, 200g","c":"Cheese","u":0.2,"m":"90500055"},{"a":"Flipkart","id":"CHEEZWYRZBWRKRG2","e":"8906001022008","n":"Go Mozzarella Dice 500 gm","c":"Cheese","u":0.5,"m":"90500058"},{"a":"Flipkart","id":"CHEEZWYRM2Q2QWZC","e":"8906001020714","n":"Go Cheese Spread Plain, 200 g","c":"Cheese","u":0.2,"m":"90500059"},{"a":"Flipkart","id":"CHEEZWYRWRAGHAX8","e":"8906001021919","n":"Go Cheese Spread Tub Olive N Herbs Jar, 200 g","c":"Cheese","u":0.2,"m":"90500060"},{"a":"Flipkart","id":"CHEEZWYRSHZYSA2N","e":"8906001021926","n":"GO Cheese Spread Tub Jalapeno Jar, 200 g","c":"Cheese","u":0.2,"m":"90500061"},{"a":"Flipkart","id":"CHEEZSU9RFJGMCHC","e":"8906001021933","n":"Go Cheese Spread Tub Garlic Jar, 200 g","c":"Cheese","u":0.2,"m":"90500062"},{"a":"Flipkart","id":"CHEEZWYRDSEUYMHK","e":"8906001021940","n":"Go Cheese Spread - Smoked Paprika, 200g Pack","c":"Cheese","u":0.2,"m":"90500063"},{"a":"Flipkart","id":"CHEEZSU9WPHZFYFU","e":"8906001021957","n":"Go Cheese Spread Tub Four Pepper Jar,  200 g","c":"Cheese","u":0.2,"m":"90500064"},{"a":"Flipkart","id":"CHEEZSUA8SKHKNXH","e":"8906001020424","n":"Go Pizza Cheese, 400g","c":"Cheese","u":0.4,"m":"90500080"},{"a":"Flipkart","id":"CHEEZWYR5EGJD9KH","e":"","n":"Go Plain Processed cheese Spread (400 g)","c":"Cheese","u":0.4,"m":"90500080"},{"a":"Flipkart","id":"CHEG7KN8B6GJW2RZ","e":"8906001023807","n":"Go Cheese Mozzarella Blend, 200gm","c":"Cheese","u":0.2,"m":"90500172"},{"a":"Flipkart","id":"CHEFBYCEG4HRGCFA","e":"8906001023357","n":"Go Cheese Processed Cube Pouch, 200 g","c":"Cheese","u":0.2,"m":"90500210"},{"a":"Flipkart","id":"CHEFZJFRKGRYYXXZ","e":"8906001024828","n":"Go Cheese Tri-Angles Plain 160 g","c":"Cheese","u":0.16,"m":"90500370"},{"a":"Flipkart","id":"CHEHFFZBFDZMBGM5","e":"8906001024798","n":"Go Four Cheese 200 gm","c":"Cheese","u":0.2,"m":"90500372"},{"a":"Flipkart","id":"CHEEZWYRWCKVFWQV","e":"8906001020837","n":"Go Cheese Slice 750g (50 Slices)","c":"Cheese","u":0.75,"m":"90500400"},{"a":"Flipkart","id":"WFWHGYHMNMZ6K9ZM","e":"8906001026713","n":"Avatar Protein Wafer Bar 10g Protein - Chocolate 40g","c":"Protien Bars","u":0.04,"m":"90600353"},{"a":"Flipkart","id":"WFWHGYHPSGENKYMY","e":"8906001026720","n":"Avatar Coffee Protein Wafer Bar 10g Protein - Coffee 40g","c":"Protien Bars","u":0.04,"m":"90600366"},{"a":"Flipkart","id":"WFWHGYHMKHRRKJBH","e":"8906001027512","n":"Avatar Cheese Protein Wafer Bar 10g Protein - Cheese 40g","c":"Protien Bars","u":0.04,"m":"90600389"},{"a":"Flipkart","id":"MLKFBYCPKP4UJACF","e":"8906001028444","n":"Go Supremo Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700015"},{"a":"Flipkart","id":"MLKFBYCPVGGAGFAG","e":"8906001028222","n":"Go UHT Daily Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700020"},{"a":"Flipkart","id":"PTFEZWF2MHG2H5FK","e":"8906001021278","n":"Gowardhan Paneer - Classic Block, 200g","c":"Paneer","u":0.2,"m":"90800001"},{"a":"Flipkart","id":"PTFEZWF2FRWE6HBX","e":"8906001021469","n":"Gowardhan Paneer - Classic Block, 500g","c":"Paneer","u":0.5,"m":"90800004"},{"a":"Flipkart","id":"CUYEZWYXPVEVQZHH","e":"","n":"Gowardhan fresh 'n' thick Dahi 400 gm","c":"Curd","u":0.4,"m":""},{"a":"Flipkart","id":"CUYG4AHGGSUCWMYB","e":"","n":"Gowardhan Rich N Thick Dahi 1 Kg Cup","c":"Curd","u":1.0,"m":""},{"a":"Flipkart","id":"CUYEZWYXWRDBGCRT","e":"","n":"Gowardhan fresh 'n' thick Dahi 200 gm","c":"Curd","u":0.2,"m":""},{"a":"Flipkart","id":"MLKEZSUZSAD8TVKF","e":"","n":"Go Fresh Thick and Delicious Pure Cream (200 ml, Pack of 1)","c":"Fresh Cream","u":0.2,"m":""},{"a":"Flipkart","id":"BUTEZWYKKUZSSMXG","e":"","n":"Gowardhan Pasteurised Table Salted Butter (500 g)","c":"Butter","u":0.5,"m":""},{"a":"Flipkart","id":"LSIEZSUXEUQWKMKZ","e":"","n":"Go Deliciously Thick Sweet Lassi (200 ml)","c":"Beverages","u":0.2,"m":""},{"a":"Swiggy","id":"53604","e":"8906001023036","n":"Gowardhan Ghee Jar, 1L","c":"Ghee","u":1.0,"m":"90200001"},{"a":"Swiggy","id":"7169","e":"8906001023043","n":"Gowardhan Ghee Jar, 500ml","c":"Ghee","u":0.5,"m":"90200002"},{"a":"Swiggy","id":"16070","e":"8906001023050","n":"Gowardhan Ghee, 200ml Jar","c":"Ghee","u":0.2,"m":"90200003"},{"a":"Swiggy","id":"20415","e":"8906001023098","n":"Gowardhan Ghee, 1ltr PP","c":"Ghee","u":1.0,"m":"90200006"},{"a":"Swiggy","id":"7168","e":"8906001023104","n":"Gowardhan Ghee, 500ml PP","c":"Ghee","u":0.5,"m":"90200007"},{"a":"Swiggy","id":"48470","e":"8906001023128","n":"Gowardhan Ghee, 1ltr RT Pack","c":"Ghee","u":1.0,"m":"90200180"},{"a":"Swiggy","id":"16069","e":"8906001023135","n":"Gowardhan Ghee, 500ml RT Pack","c":"Ghee","u":0.5,"m":"90200181"},{"a":"Swiggy","id":"78991","e":"8906001024842","n":"Gowardhan Ghee Festival Pack Container Jar, 2 x 1 L","c":"Ghee","u":2.0,"m":"90200250"},{"a":"Swiggy","id":"765050","e":"8906001024880","n":"Gowardhan Swarna Pure Cow Ghee 1L Pouch","c":"Ghee","u":1.0,"m":"90200270"},{"a":"Swiggy","id":"76764","e":"","n":"gowardhan pure cow ghee 5L TIN","c":"Ghee","u":5.0,"m":"90200306"},{"a":"Swiggy","id":"239160","e":"8906001026112","n":"Gowardhan Khushiyan Kaju Pista Roll, 200 gm","c":"Sweets","u":0.2,"m":"90300272"},{"a":"Swiggy","id":"798196","e":"8906001026044","n":"Gowardhan Khushiyan Kaju Katli 200 gm","c":"Sweets","u":0.2,"m":"90300273"},{"a":"Swiggy","id":"589456","e":"8906001026051","n":"Gowardhan Khushiyan Malai Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300274"},{"a":"Swiggy","id":"141545","e":"8906001026068","n":"Gowardhan Khushiyan Kesar Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300275"},{"a":"Swiggy","id":"703116","e":"8906001021209","n":"Go Natural Cheese Orange Mild Chedder 200 gm Block","c":"Cheese","u":0.2,"m":"90500000"},{"a":"Swiggy","id":"780910","e":"8906001021193","n":"Go Natural Cheese Montero Jack 200 gm Block","c":"Cheese","u":0.2,"m":"90500008"},{"a":"Swiggy","id":"466576","e":"8906001021186","n":"Go Natural Cheese Colby 200 gm Block","c":"Cheese","u":0.2,"m":"90500010"},{"a":"Swiggy","id":"797846","e":"8906001020868","n":"Go Natural Cheese Shredded Pasta Italiana 150 gm","c":"Cheese","u":0.15,"m":"90500014"},{"a":"Swiggy","id":"715942","e":"8906001020967","n":"Go Natural Cheese Shredded Mexican 150 gm","c":"Cheese","u":0.15,"m":"90500015"},{"a":"Swiggy","id":"377785","e":"8906001020851","n":"Go Natural Cheese Shredded Pizza Italiana 150 gm","c":"Cheese","u":0.15,"m":"90500016"},{"a":"Swiggy","id":"666691","e":"8906001020370","n":"Go Cheese Processed Cheese 1kg","c":"Cheese","u":1.0,"m":"90500017"},{"a":"Swiggy","id":"5006","e":"8906001020394","n":"Go Cheese Processed Block 200 g","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Swiggy","id":"394347","e":"8906001020380","n":"Go Pizza Cheese 1kg","c":"Cheese","u":1.0,"m":"90500020"},{"a":"Swiggy","id":"5007","e":"8906001020431","n":"Go Cheese Pizza Cheese Block 200g","c":"Cheese","u":0.2,"m":"90500021"},{"a":"Swiggy","id":"20190","e":"8906001020608","n":"Go Cheese Slice 476g (28 Slices)","c":"Cheese","u":0.476,"m":"90500027"},{"a":"Swiggy","id":"220463","e":"8906001020202","n":"Go Cheese Slice 100g (5 Slices)","c":"Cheese","u":0.2,"m":"90500029"},{"a":"Swiggy","id":"5011","e":"8906001020196","n":"Go Cheese Slice 200g (10 Slices)","c":"Cheese","u":0.2,"m":"90500029"},{"a":"Swiggy","id":"5012","e":"8906001020219","n":"Go Mozzarella Block Cheese, 200g","c":"Cheese","u":0.2,"m":"90500055"},{"a":"Swiggy","id":"832894","e":"8906001022008","n":"Go Mozzarella Dice 500 gm","c":"Cheese","u":0.5,"m":"90500058"},{"a":"Swiggy","id":"96950","e":"8906001020714","n":"Go Cheese Spread Plain, 200 g","c":"Cheese","u":0.2,"m":"90500059"},{"a":"Swiggy","id":"880112","e":"8906001021919","n":"Go Cheese Spread Tub Olive N Herbs Jar, 200 g","c":"Cheese","u":0.2,"m":"90500060"},{"a":"Swiggy","id":"5009","e":"8906001021926","n":"GO Cheese Spread Tub Jalapeno Jar, 200 g","c":"Cheese","u":0.2,"m":"90500061"},{"a":"Swiggy","id":"5010","e":"8906001021933","n":"Go Cheese Spread Tub Garlic Jar, 200 g","c":"Cheese","u":0.2,"m":"90500062"},{"a":"Swiggy","id":"20191","e":"8906001023807","n":"Go Cheese Mozzarella Blend, 200gm","c":"Cheese","u":0.2,"m":"90500172"},{"a":"Swiggy","id":"5008","e":"8906001023357","n":"Go Cheese Processed Cube Pouch, 200 g","c":"Cheese","u":0.2,"m":"90500210"},{"a":"Swiggy","id":"65310","e":"8906001024828","n":"Go Cheese Tri-Angles Plain 160 g","c":"Cheese","u":0.16,"m":"90500370"},{"a":"Swiggy","id":"52558","e":"8906001024798","n":"Go Four Cheese 200 gm","c":"Cheese","u":0.2,"m":"90500372"},{"a":"Swiggy","id":"129689","e":"8906001024675","n":"Go Cheese Four Cheese 1kg","c":"Cheese","u":1.0,"m":"90500391"},{"a":"Swiggy","id":"99321","e":"8906001024620","n":"Cheese Mozzarella & Cheddar Blend 1kg","c":"Cheese","u":1.0,"m":"90500392"},{"a":"Swiggy","id":"951584","e":"8906001024972","n":"Go Cheese Mozzarella Shredded Cheese 1kg","c":"Cheese","u":1.0,"m":"90500393"},{"a":"Swiggy","id":"630376","e":"8906001020837","n":"Go Cheese Slice 750g (50 Slices)","c":"Cheese","u":0.75,"m":"90500400"},{"a":"Swiggy","id":"646259","e":"8906001026713","n":"Avatar Protein Wafer Bar 10g Protein - Chocolate 40g","c":"Protien Bars","u":0.04,"m":"90600353"},{"a":"Swiggy","id":"708393","e":"8906001026720","n":"Avatar Coffee Protein Wafer Bar 10g Protein - Coffee 40g","c":"Protien Bars","u":0.04,"m":"90600366"},{"a":"Swiggy","id":"676664","e":"8906001027512","n":"Avatar Cheese Protein Wafer Bar 10g Protein - Cheese 40g","c":"Protien Bars","u":0.04,"m":"90600389"},{"a":"Swiggy","id":"5014","e":"8906001028444","n":"Go Supremo Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700015"},{"a":"Swiggy","id":"434099","e":"8906001028222","n":"Go UHT Daily Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700020"},{"a":"Swiggy","id":"5004","e":"8906001021278","n":"Gowardhan Paneer - Classic Block, 200g","c":"Paneer","u":0.2,"m":"90800001"},{"a":"Swiggy","id":"5003","e":"8906001021421","n":"Gowardhan Frozen Paneer Cubes, 200g","c":"Paneer","u":0.2,"m":"90800003"},{"a":"Swiggy","id":"67318","e":"8906001021469","n":"Gowardhan Paneer - Classic Block, 500g","c":"Paneer","u":0.5,"m":"90800004"},{"a":"Swiggy","id":"685012","e":"","n":"avvatar performance whey 5 sachet belgian chocolate 175 g","c":"Protien Powders","u":0.175,"m":""},{"a":"Swiggy","id":"7167","e":"","n":"gowardhan fresh curd 500g","c":"Curd","u":0.5,"m":""},{"a":"Swiggy","id":"7166","e":"","n":"gowardhan curd 1kg","c":"Curd","u":1.0,"m":""},{"a":"Swiggy","id":"48975","e":"","n":"gowardhan gold milk 500ml","c":"Fresh Milk","u":0.5,"m":""},{"a":"Swiggy","id":"86137","e":"","n":"gowardhan fresh milk 500ml","c":"Fresh Milk","u":0.5,"m":""},{"a":"Swiggy","id":"202803","e":"","n":"avvatar performance whey protein cold coffee 1 kg","c":"Protien Powders","u":1.0,"m":""},{"a":"Swiggy","id":"451285","e":"","n":"avvatar performance whey 5 sachet cold coffee","c":"Protien Powders","u":0.175,"m":""},{"a":"Swiggy","id":"331599","e":"","n":"avvatar isorich protein belgian chocolate 1 kg","c":"Protien Powders","u":1.0,"m":""},{"a":"Swiggy","id":"685678","e":"","n":"avvatar whey protein belgian chocolate 1 kg","c":"Protien Powders","u":1.0,"m":""},{"a":"Swiggy","id":"184978","e":"","n":"avvatar whey protein malai kulfi 1 kg","c":"Protien Powders","u":1.0,"m":""},{"a":"Swiggy","id":"271585","e":"","n":"avvatar whey protein chocolate hazelnut 1 kg","c":"Protien Powders","u":1.0,"m":""},{"a":"Swiggy","id":"823219","e":"","n":"avvatar whey protein malai kulfi 2 kg","c":"Protien Powders","u":2.0,"m":""},{"a":"Swiggy","id":"978059","e":"","n":"avvatar micronised creatine monohydrate powder","c":"Protien Powders","u":0.1,"m":""},{"a":"Swiggy","id":"284257","e":"","n":"avvatar performance whey protein malai kulfi flavour 2 kg","c":"Protien Powders","u":2.0,"m":""},{"a":"Swiggy","id":"633167","e":"","n":"avvatar isorich protein malai kulfi 2 kg","c":"Protien Powders","u":2.0,"m":""},{"a":"Swiggy","id":"626631","e":"","n":"avvatar isorich protein malai kulfi 1 kg","c":"Protien Powders","u":1.0,"m":""},{"a":"Swiggy","id":"741828","e":"","n":"avvatar whey protein unflavoured 1kg","c":"Protien Powders","u":1.0,"m":""},{"a":"Swiggy","id":"205289","e":"","n":"avvatar performance whey 5 sachet malai kulfi","c":"Protien Powders","u":1.0,"m":""},{"a":"Swiggy","id":"638323","e":"","n":"avvatar isorich protein chocolate hazelnut 2 kg","c":"Protien Powders","u":2.0,"m":""},{"a":"Swiggy","id":"932052","e":"","n":"avvatar performance whey protein chocolate hazelnut flavour 2 kg","c":"Protien Powders","u":2.0,"m":""},{"a":"Swiggy","id":"321633","e":"","n":"avvatar performance whey 5 sachet assorted","c":"Protien Powders","u":0.175,"m":""},{"a":"Swiggy","id":"237312","e":"","n":"avvatar performance whey protein cold coffee flavour 2 kg","c":"Protien Powders","u":2.0,"m":""},{"a":"Swiggy","id":"475206","e":"","n":"avvatar whey protein chocolate hazelnut 2 kg","c":"Protien Powders","u":2.0,"m":""},{"a":"Swiggy","id":"916247","e":"","n":"avvatar protein wafer bar | 10g protein | set of (8 x 40g each) | chocolate flavour","c":"Protien Powders","u":0.32,"m":""},{"a":"Swiggy","id":"105880","e":"","n":"avvatar performance whey 5 sachet unflavoured","c":"Protien Powders","u":0.175,"m":""},{"a":"Zepto","id":"32fe31b9-7ec7-445a-8497-96acee80b8d3","e":"8906001023036","n":"Gowardhan Ghee Jar, 1L","c":"Ghee","u":1.0,"m":"90200001"},{"a":"Zepto","id":"d79c7441-2c03-4877-9119-7a94dc26ce75","e":"8906001023043","n":"Gowardhan Ghee Jar, 500ml","c":"Ghee","u":0.5,"m":"90200002"},{"a":"Zepto","id":"ebd1f9c5-95aa-4f61-b17f-48e3ed07ac48","e":"8906001023050","n":"Gowardhan Ghee, 200ml Jar","c":"Ghee","u":0.2,"m":"90200003"},{"a":"Zepto","id":"2e678e64-bafc-42d1-a78a-225fe2941897","e":"8906001023098","n":"Gowardhan Ghee, 1ltr PP","c":"Ghee","u":1.0,"m":"90200006"},{"a":"Zepto","id":"5740ab5d-e380-498e-8ba6-3b7dd228f274","e":"8906001023104","n":"Gowardhan Ghee, 500ml PP","c":"Ghee","u":0.5,"m":"90200007"},{"a":"Zepto","id":"84e2daaf-9d67-47de-9b7b-79ad0a4660c7","e":"8906001023449","n":"Gowardhan Premium Swarna Ghee, 1000 ml Jar","c":"Ghee","u":1.0,"m":"90200140"},{"a":"Zepto","id":"cbc5f98b-c1ba-4152-8d75-a5e590673100","e":"8906001023456","n":"Gowardhan Premium Swarna Ghee, 500 ml Jar","c":"Ghee","u":0.5,"m":"90200141"},{"a":"Zepto","id":"eb73c1e2-b06f-4a2f-a40d-00d0233c9c85","e":"8906001023463","n":"Gowardhan Premium Swarna Ghee, 200 ml Jar","c":"Ghee","u":0.2,"m":"90200142"},{"a":"Zepto","id":"d806fcb4-040f-4e6f-8d00-d2a75dc47532","e":"8906001023128","n":"Gowardhan Ghee, 1ltr RT Pack","c":"Ghee","u":1.0,"m":"90200180"},{"a":"Zepto","id":"7fb7ccbc-4d5c-4560-b61e-08d27320513e","e":"8906001023135","n":"Gowardhan Ghee, 500ml RT Pack","c":"Ghee","u":0.5,"m":"90200181"},{"a":"Zepto","id":"03d8cefd-895d-4ee5-b11e-ae33d99c68e5","e":"8906001024842","n":"Gowardhan Ghee Festival Pack Container Jar, 2 x 1 L","c":"Ghee","u":2.0,"m":"90200250"},{"a":"Zepto","id":"dbc13b05-1f42-49db-926a-e29fd67106b7","e":"8906001024880","n":"Gowardhan Swarna Pure Cow Ghee 1L Pouch","c":"Ghee","u":1.0,"m":"90200270"},{"a":"Zepto","id":"49d548be-48d6-4fc2-b65a-c37dd3e8eb8a","e":"8906001025641","n":"Gowardhan Cow Ghee 750 ml Pouch","c":"Ghee","u":0.75,"m":"90200289"},{"a":"Zepto","id":"d54b259a-11c8-4606-bf97-48f1e1158be4","e":"","n":"Gowardhan Pure Cow Ghee 5Ltr Bucket/Jar 5.0 LITER","c":"Ghee","u":5.0,"m":"90200306"},{"a":"Zepto","id":"4828bf30-5cb4-4585-b128-0649b75ac176","e":"8906001028017","n":"Gowardhan Gulab Jamun Mix Pouch 200g","c":"GJ Mix","u":0.2,"m":"90300210"},{"a":"Zepto","id":"67a886d8-697d-46a5-bbd9-bae962f375a9","e":"8906001026112","n":"Gowardhan Khushiyan Kaju Pista Roll, 200 gm","c":"Sweets","u":0.2,"m":"90300272"},{"a":"Zepto","id":"f778e46f-b819-4c3e-b401-bcee50efef3b","e":"8906001026044","n":"Gowardhan Khushiyan Kaju Katli 200 gm","c":"Sweets","u":0.2,"m":"90300273"},{"a":"Zepto","id":"c5ed553d-9ee3-4df4-a929-01f1e97a6366","e":"8906001026051","n":"Gowardhan Khushiyan Malai Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300274"},{"a":"Zepto","id":"14d1647e-aa24-4d46-b271-70f54a29b5e0","e":"8906001026068","n":"Gowardhan Khushiyan Kesar Pedha, 200 gm","c":"Sweets","u":0.2,"m":"90300275"},{"a":"Zepto","id":"40550290-3185-4c10-81d8-7fdcf785bb33","e":"8906001020868","n":"Go Natural Cheese Shredded Pasta Italiana 150 gm","c":"Cheese","u":0.15,"m":"90500014"},{"a":"Zepto","id":"72cce24c-5f44-4bd5-a875-397c4fcf054a","e":"8906001020967","n":"Go Natural Cheese Shredded Mexican 150 gm","c":"Cheese","u":0.15,"m":"90500015"},{"a":"Zepto","id":"710ba162-1d52-474b-81d3-126e04fde6f5","e":"8906001020851","n":"Go Natural Cheese Shredded Pizza Italiana 150 gm","c":"Cheese","u":0.15,"m":"90500016"},{"a":"Zepto","id":"e49903d5-5014-4800-99b9-96e087cc61c7","e":"","n":"Processed Block 400 g","c":"Cheese","u":0.4,"m":"90500018"},{"a":"Zepto","id":"de9dadec-cf56-45ed-b6b9-d2d493a5560e","e":"","n":"Go Processed Cheese Block 400 g","c":"Cheese","u":0.4,"m":"90500018"},{"a":"Zepto","id":"7d8ff202-59c5-4f9b-9a8e-4f898849af66","e":"8906001020394","n":"Go Cheese Processed Block 200 g","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Zepto","id":"06599ac7-7fcb-41fd-9cfc-91cf73785342","e":"","n":"Gowardhan Processed Cheese Carton 200 g","c":"Cheese","u":0.2,"m":"90500019"},{"a":"Zepto","id":"a65ee16a-6503-441d-a11b-149b86fd0491","e":"8906001020431","n":"Go Cheese Pizza Cheese Block 200g","c":"Cheese","u":0.2,"m":"90500021"},{"a":"Zepto","id":"c48faab7-4f9f-48c2-95f7-713e9c5b2195","e":"8906001020608","n":"Go Cheese Slice 476g (28 Slices)","c":"Cheese","u":0.476,"m":"90500027"},{"a":"Zepto","id":"30b152b2-01d7-48e1-a2f8-dd186a629877","e":"8906001020196","n":"Go Cheese Slice 200g (10 Slices)","c":"Cheese","u":0.2,"m":"90500029"},{"a":"Zepto","id":"effaf9f0-d954-4985-98f4-2a36b6dbad2b","e":"8906001020202","n":"Go Cheese Slice 100g (5 Slices)","c":"Cheese","u":0.1,"m":"90500030"},{"a":"Zepto","id":"8b5dfaa3-dce7-4b26-ac5c-5bc119d527f3","e":"8906001020219","n":"Go Mozzarella Block Cheese, 200g","c":"Cheese","u":0.2,"m":"90500055"},{"a":"Zepto","id":"23c4d0e9-aeb3-4814-8b8e-6c8936c4b585","e":"8906001022008","n":"Go Mozzarella Dice 500 gm","c":"Cheese","u":0.5,"m":"90500058"},{"a":"Zepto","id":"61f4c927-4d99-4a15-b92d-519b24b5566f","e":"8906001020714","n":"Go Cheese Spread Plain, 200 g","c":"Cheese","u":0.2,"m":"90500059"},{"a":"Zepto","id":"ac964a47-96e4-4f62-b8b8-ad286a928bc8","e":"8906001021919","n":"Go Cheese Spread Olive & Herbs 200.0 GRAM","c":"Cheese","u":0.2,"m":"90500060"},{"a":"Zepto","id":"d76ffab4-302f-413e-834e-c18a3e154e4a","e":"8906001021933","n":"Go Cheese Spread Tub Garlic Jar, 200 g","c":"Cheese","u":0.2,"m":"90500062"},{"a":"Zepto","id":"f4cceb9f-b8e3-4df1-ace0-b5592ce63dd3","e":"8906001021940","n":"Go Cheese Spread - Smoked Paprika, 200g Pack","c":"Cheese","u":0.2,"m":"90500063"},{"a":"Zepto","id":"b1e8a169-5af9-4362-acc6-8bf405b7c3d3","e":"8906001021957","n":"Go Cheese Spread Tub Four Pepper Jar,  200 g","c":"Cheese","u":0.2,"m":"90500064"},{"a":"Zepto","id":"cea25cc7-8437-4a92-8337-55a86b8dbc71","e":"8906001023807","n":"Go Cheese Mozzarella Blend, 200gm","c":"Cheese","u":0.2,"m":"90500172"},{"a":"Zepto","id":"32eaef0e-6c38-468c-aac1-4c31bdafa120","e":"8906001023357","n":"Go Cheese Processed Cube Pouch, 200 g","c":"Cheese","u":0.2,"m":"90500210"},{"a":"Zepto","id":"f3c70525-e724-4dbc-8bb2-924dba4995f8","e":"8906001024828","n":"Go Cheese Tri-Angles Plain 160 g","c":"Cheese","u":0.16,"m":"90500370"},{"a":"Zepto","id":"ccbfeb0f-8f05-4d23-98c1-5b85e27e866e","e":"8906001024798","n":"Go Four Cheese 200 g","c":"Cheese","u":0.2,"m":"90500372"},{"a":"Zepto","id":"ccbMar0f-8f05-4d23-98c1-5b85e27e866e","e":"8906001024798","n":"Go Four Cheese 200 gm","c":"Cheese","u":0.2,"m":"90500372"},{"a":"Zepto","id":"7c7f1218-1069-4b35-ac5c-f1d934322569","e":"8906001024972","n":"Cheese Mozzarella & Cheddar Blend 1kg","c":"Cheese","u":1.0,"m":"90500392"},{"a":"Zepto","id":"003c36fe-e0d5-46b0-be5c-0e79cf6bb4c3","e":"8906001024620","n":"Go Cheese Mozzarella Shredded Cheese 1kg","c":"Cheese","u":1.0,"m":"90500393"},{"a":"Zepto","id":"c927fb1b-ccda-49e8-9251-f89c7b31b495","e":"8906001020837","n":"Go Cheese Slice 750g (50 Slices)","c":"Cheese","u":0.75,"m":"90500400"},{"a":"Zepto","id":"b14805d5-fbcf-4c63-baca-a42c319440cf","e":"8906001026713","n":"Avatar Protein Wafer Bar 10g Protein - Chocolate 40g","c":"Protien Bars","u":0.04,"m":"90600353"},{"a":"Zepto","id":"e3559fca-4f06-4997-a5b9-e5d0bf99eb83","e":"","n":"Avvatar Protein Wafer Bar | 10G Protein | Chocolate Flavour 320.0 GRAM","c":"Protien Bars","u":0.04,"m":"90600353"},{"a":"Zepto","id":"cc973658-7709-4b8c-9cfa-22d7bae9d9a5","e":"","n":"Avvatar Protein Wafer Bar | Coffee Flavour 1.0 PIECE","c":"Protien Bars","u":0.04,"m":"90600366"},{"a":"Zepto","id":"cc973658-7709-4b8c-9cfa-22d7bae9d9a5-","e":"8906001026720","n":"Avatar Coffee Protein Wafer Bar 10g Protein - Coffee 40g","c":"Protien Bars","u":0.04,"m":"90600366"},{"a":"Zepto","id":"f4724293-9898-4fd4-9759-c7561e2451d1","e":"8906001027512","n":"Avatar Cheese Protein Wafer Bar 10g Protein - Cheese 40g","c":"Protien Bars","u":0.04,"m":"90600389"},{"a":"Zepto","id":"7a92ca1d-a471-484a-af15-fb4d8a71ca18","e":"8906001027553","n":"Avatar Tiramisu Protein Wafer Bar 10g Protein - Tiramisu 40g","c":"Protien Bars","u":0.04,"m":"90600393"},{"a":"Zepto","id":"b91515df-f952-45bc-93c9-e45a8259d7b1","e":"8906001028628","n":"Avatar Matcha Protein Wafer Bar 10g Protein - Matcha 40g","c":"Protien Bars","u":0.04,"m":"90600394"},{"a":"Zepto","id":"713177eb-8784-4890-8b5d-a3274e2e5058","e":"","n":"Go UHT Daily Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700020"},{"a":"Zepto","id":"713177eb-8784-4890- 8b5d-a3274e2e5058","e":"8906001028222","n":"Go UHT Daily Milk, 1L","c":"UHT Milk","u":1.0,"m":"90700020"},{"a":"Zepto","id":"635f0d0b-7749-4fc1-86c8-3f7f8b1c97ba","e":"8906001021278","n":"Gowardhan Paneer - Classic Block, 200g","c":"Paneer","u":0.2,"m":"90800001"},{"a":"Zepto","id":"1ca656de-cdde-44b1-abdc-ad627f67fe07","e":"","n":"Gowardhan Paneer - Classic Block, 200g","c":"Paneer","u":0.2,"m":"90800001"},{"a":"Zepto","id":"1aeea0a9-50d3-4fc1-b29a-e4472cf66067","e":"8906001021469","n":"Gowardhan Paneer - Classic Block, 500g","c":"Paneer","u":0.5,"m":"90800004"},{"a":"Zepto","id":"671ce35b-78e5-44fa-a517-f9cf98564131","e":"","n":"Gowardhan Fresh Milk 500 MILLILITRE","c":"Fresh Milk","u":0.5,"m":""},{"a":"Zepto","id":"6a2d0d24-c674-4962-82bf-a16524507202","e":"","n":"Gowardhan Fresh Curd 500 GRAM","c":"Curd","u":0.5,"m":""},{"a":"Zepto","id":"bf49c192-a55b-415b-9ce7-53cc22fafc28","e":"","n":"Gowardhan Gold Milk 500 MILLILITRE","c":"Fresh Milk","u":0.5,"m":""},{"a":"Zepto","id":"5f5b5579-e9c8-4518-b1c5-0f1f1fc249cf","e":"","n":"Gowardhan Dahi 200 g","c":"Curd","u":0.2,"m":""},{"a":"Zepto","id":"6120c529-80ac-4e7c-bdd7-4dea2f641219","e":"","n":"Go Cream - Fresh (Carton) 200 ml","c":"Fresh Cream","u":0.2,"m":""},{"a":"Zepto","id":"cf8cbd87-d97a-4968-afa7-7cafead499a0","e":"","n":"Gowardhan Dahi 400 g","c":"Curd","u":0.4,"m":""},{"a":"Zepto","id":"051b7b47-1da5-49d4-b949-c7639ce77f94","e":"","n":"Avvatar Micronised Creatine Monohydrate Powder Unflavoured 154.0 GRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"34433d06-4b38-4b4e-9f41-3e34ede20247","e":"","n":"Avvatar Performance Protein Belgian Chocolate 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"393192a7-abd2-40ad-b46c-870c21654147","e":"","n":"Avvatar Isorich Protein Malai Kulfi 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"42708579-23ae-444c-8c8e-7e94fae1788e","e":"","n":"Avvatar Whey Protein Belgian Chocolate 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"79aad8f5-c1c2-4fff-979d-65986ab9e40e","e":"","n":"Avvatar Isorich Protein Mango Rush 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"c86ae384-373b-4e2f-a8b8-aec2225315b9","e":"","n":"Avvatar Performance Whey Protein Cold Coffee 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"b3a84cd7-3297-47f2-bc6a-c73bfc018c00","e":"","n":"Avvatar Whey Protein Malai Kulfi 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"ee04cb23-e7d3-4a80-bd8e-7ed3479eb7eb","e":"","n":"Avvatar Isorich Protein Malai Kulfi 2.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"1f81bd57-4e45-4b40-a795-a1f4f8c24b3c","e":"","n":"Avvatar Nitro Iso Whey Belgian Chocolate 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"23878b24-7890-436a-a1df-ea3e988b4a6d","e":"","n":"Avvatar Isorich Protein Mango Rush 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"8071c163-5ac4-44a9-b687-33ad0d631164","e":"","n":"Avvatar Isorich Protein Chocolate Hazelnut 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"64d9c490-dea3-4d91-a7aa-3a5ee47967c0","e":"","n":"Avvatar Isorich Protein Malai Kulfi 4.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"0d765b9f-16ed-46c6-a52a-8aa957e5f746","e":"","n":"Avvatar Muscle Gainer Cafe Mocha 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"26849c51-9666-42e2-a8be-ff40653e90dd","e":"","n":"Avvatar Isorich Protein Chocolate Hazelnut 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"241f2262-b621-4e3d-9abb-bf6833465487","e":"","n":"Avvatar Isorich Protein Caramel Creme 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"61b15960-94f6-424d-b27e-fd7329c4a3b4","e":"","n":"Avvatar Unflavoured Whey 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"a090cf89-2477-40a1-9aa9-781fbb6b7b4e","e":"","n":"Avvatar Unflavoured Whey 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"db1e665a-db09-48d5-8adc-9ad7427324a9","e":"","n":"Avvatar Whey Protein Malai Kulfi 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"bf57464b-ae03-48c2-939e-b4ed50f11b85","e":"","n":"Avvatar Isorich Protein Belgian Chocolate 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"a5840f93-d05f-4be4-8473-e338a04a9a78","e":"","n":"Avvatar Performance Whey Protein | Travel Pack | Assorted Power Pack 175.0 GRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"4aaee934-b689-4889-85a9-d2aec9d3c56f","e":"","n":"Avvatar Whey Protein Cafe Mocha Swirl 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"15454286-f350-4123-8794-dce76551c25b","e":"","n":"Avvatar Isorich Protein Belgian Chocolate 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"ca09bfe8-8728-4d97-b50a-6080ac9676e3","e":"","n":"Avvatar Whey Protein Chocolate Hazelnut 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""},{"a":"Zepto","id":"20efcfdb-ae02-48e5-b404-0968ad5596dc","e":"","n":"Avvatar Isorich Protein Belgian Chocolate 1.0 KILOGRAM","c":"Protien Powders","u":1.0,"m":""}];
@@ -295,7 +326,7 @@ const S = {
   overrides: LS.get('po_overrides', {}),
   statusMap: LS.get('po_statusmap', {}),
   locMap: LS.get('po_locmap', {}),
-  exp: { t3: new Set(), t4: new Set() },
+  exp: { tPlat: new Set(), t3: new Set(), t4: new Set(), t5: new Set(), t6: new Set() },
   sort: {},
   charts: {}
 };
@@ -532,26 +563,55 @@ function groupBy(lines, fn) {
 /* ---------- filters ---------- */
 function tabLines() { return S.tab === 'Overall' ? S.lines : S.lines.filter(L => L.P === S.tab); }
 function filtered() {
-  const city = $('fCity').value, cat = $('fCat').value, sku = $('fSku').value, st = $('fStatus').value;
-  const from = $('fFrom').value, to = $('fTo').value, q = $('fPo').value.trim().toLowerCase();
+  const from = $('fFrom').value, to = $('fTo').value, q = $('fPo').value.trim().toLowerCase(), ov = S.tab === 'Overall';
   return tabLines().filter(L =>
-    (city === 'All' || L.city === city) && (cat === 'All' || L.cat === cat) && (sku === 'All' || L.sku === sku) &&
-    (st === 'All' || L.bucket === st) && (!from || (L.date && L.date >= from)) && (!to || (L.date && L.date <= to)) &&
+    (!ov || msPlat.has(L.P)) && msCity.has(L.city) && msCat.has(L.cat) && msSku.has(L.sku) && msStatus.has(L.bucket) && (!from || (L.date && L.date >= from)) && (!to || (L.date && L.date <= to)) &&
     (!q || L.po.toLowerCase().includes(q)));
 }
-function fillSelect(id, items, allLabel) {   // items: [value,label]
-  const el = $(id), old = el.value || 'All';
-  el.innerHTML = '';
-  const o = document.createElement('option'); o.value = 'All'; o.textContent = allLabel; el.appendChild(o);
-  for (const [v, l] of items) { const x = document.createElement('option'); x.value = v; x.textContent = l; el.appendChild(x); }
-  el.value = [...el.options].some(o => o.value === old) ? old : 'All';
+/* multi-select dropdown: nothing ticked = All */
+class MS {
+  constructor(id, allLabel) { this.el = $(id); this.all = allLabel; this.items = []; this.sel = new Set(); this.onchange = () => {}; this.build(); }
+  build() {
+    this.el.innerHTML = '<button type="button" class="msb"></button><div class="msp"><input type="text" class="mss" placeholder="Search…"><div class="msa"><a data-a="all">Select all</a> · <a data-a="none">Clear (= All)</a></div><div class="mso"></div></div>';
+    this.btn = this.el.querySelector('.msb'); this.panel = this.el.querySelector('.msp'); this.list = this.el.querySelector('.mso'); this.inp = this.el.querySelector('.mss');
+    this.btn.onclick = ev => { ev.stopPropagation(); const was = this.panel.classList.contains('show'); document.querySelectorAll('.msp.show').forEach(p => p.classList.remove('show')); if (!was) { this.panel.classList.add('show'); this.inp.focus(); } };
+    this.panel.onclick = ev => ev.stopPropagation();
+    this.inp.oninput = () => this.draw();
+    this.el.querySelectorAll('[data-a]').forEach(a => a.onclick = () => {
+      if (a.dataset.a === 'all') this.visible().forEach(i => this.sel.add(i[0])); else this.sel.clear();
+      this.draw(); this.label(); this.onchange();
+    });
+    this.draw(); this.label();
+  }
+  visible() { const q = this.inp.value.trim().toLowerCase(); return this.items.filter(i => !q || i[1].toLowerCase().includes(q)); }
+  draw() {
+    this.list.innerHTML = '';
+    for (const [v, l] of this.visible()) {
+      const lab = document.createElement('label'), cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = this.sel.has(v);
+      cb.onchange = () => { cb.checked ? this.sel.add(v) : this.sel.delete(v); this.label(); this.onchange(); };
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(l)); this.list.appendChild(lab);
+    }
+  }
+  label() {
+    const n = this.sel.size;
+    this.btn.textContent = (n === 0 ? this.all : n === 1 ? (this.items.find(i => i[0] === [...this.sel][0]) || ['', [...this.sel][0]])[1] : n + ' selected') + '  ▾';
+  }
+  setItems(items) { this.items = items; const ok = new Set(items.map(i => i[0])); this.sel = new Set([...this.sel].filter(v => ok.has(v))); this.draw(); this.label(); }
+  has(v) { return this.sel.size === 0 || this.sel.has(v); }
+  clear() { this.sel.clear(); this.draw(); this.label(); }
 }
+document.addEventListener('click', () => document.querySelectorAll('.msp.show').forEach(p => p.classList.remove('show')));
+const msPlat = new MS('fPlat', 'All platforms'), msCity = new MS('fCity', 'All cities'), msCat = new MS('fCat', 'All categories'),
+      msSku = new MS('fSku', 'All SKUs'), msStatus = new MS('fStatus', 'All statuses');
+msStatus.setItems(['Open', 'Expired', 'Delivered', 'Cancelled'].map(v => [v, v]));
 function refreshFilterOptions() {
   const ls = tabLines();
-  fillSelect('fCity', [...new Set(ls.map(L => L.city))].sort().map(v => [v, v]), 'All cities');
-  fillSelect('fCat', [...new Set(ls.map(L => L.cat))].sort().map(v => [v, v]), 'All categories');
+  msPlat.setItems(PLATFORM_ORDER.filter(P => S.raw[P]).map(P => [P, P]));
+  msCity.setItems([...new Set(ls.map(L => L.city))].sort().map(v => [v, v]));
+  msCat.setItems([...new Set(ls.map(L => L.cat))].sort().map(v => [v, v]));
   const sk = new Map(); ls.forEach(L => sk.set(L.sku, L.skuLabel));
-  fillSelect('fSku', [...sk.entries()].sort((a, b) => a[1].localeCompare(b[1])), 'All SKUs');
+  msSku.setItems([...sk.entries()].sort((a, b) => a[1].localeCompare(b[1])));
   const ds = ls.map(L => L.date).filter(Boolean).sort();
   if (ds.length) { $('fFrom').min = $('fTo').min = ds[0]; $('fFrom').max = $('fTo').max = ds[ds.length - 1]; }
 }
@@ -618,16 +678,18 @@ document.addEventListener('click', e => {
   if (ex) {
     const id = ex.dataset.expand;
     S.exp[id].clear();
-    if (ex.dataset.mode === 'all') {
-      const ls = filtered();
-      for (const [c, cl] of groupBy(ls, L => L.city)) {
-        S.exp[id].add('›' + c);
-        if (id === 't4') for (const [k] of groupBy(cl, L => L.cat)) S.exp[id].add('›' + c + '›' + k);
-      }
-    }
+    if (ex.dataset.mode === 'all') expandAll(id);
     renderTables();
   }
 });
+const TBL = {};
+function expandAll(id) {
+  const lv = TBL[id], walk = (ls, d, path) => {
+    if (d >= lv.length - 1) return;
+    for (const [k, l] of groupBy(ls, lv[d].key)) { const p = path + '›' + k; S.exp[id].add(p); walk(l, d + 1, p); }
+  };
+  walk(filtered(), 0, '');
+}
 const LV = {
   city: { key: L => L.city },
   cat: { key: L => L.cat },
@@ -637,11 +699,14 @@ const LV = {
 function renderTables() {
   const ls = filtered();
   $('secPlat').style.display = S.tab === 'Overall' ? '' : 'none';
-  if (S.tab === 'Overall') renderTable('tPlat', [LV.plat], 'Platform', ls);
+  TBL.tPlat = [LV.plat, LV.cat]; TBL.t3 = [LV.city, LV.cat]; TBL.t4 = [LV.city, LV.cat, LV.sku]; TBL.t5 = [LV.cat, LV.city]; TBL.t6 = [LV.cat, LV.city, LV.sku];
+  if (S.tab === 'Overall') renderTable('tPlat', TBL.tPlat, 'Platform › Category', ls);
   renderTable('t1', [LV.city], 'City', ls);
   renderTable('t2', [LV.cat], 'Category', ls);
-  renderTable('t3', [LV.city, LV.cat], 'City › Category', ls);
-  renderTable('t4', [LV.city, LV.cat, LV.sku], 'City › Category › SKU', ls);
+  renderTable('t3', TBL.t3, 'City › Category', ls);
+  renderTable('t4', TBL.t4, 'City › Category › SKU', ls);
+  renderTable('t5', TBL.t5, 'Category › City', ls);
+  renderTable('t6', TBL.t6, 'Category › City › SKU', ls);
 }
 
 /* ---------- KPIs & charts ---------- */
@@ -665,7 +730,14 @@ function mkChart(name, canvas, type, labels, datasets, opts = {}) {
     type, data: { labels, datasets },
     options: Object.assign({
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: datasets.length > 1 || type === 'doughnut', position: 'bottom' } },
+      interaction: type === 'doughnut' ? { mode: 'nearest', intersect: true } : { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: datasets.length > 1 || type === 'doughnut', position: 'bottom' },
+        tooltip: { callbacks: { label: c => {
+          const v = typeof c.parsed === 'number' ? c.parsed : (c.chart.options.indexAxis === 'y' ? c.parsed.x : c.parsed.y);
+          return (c.dataset.label || c.label) + ': ' + T(v) + (type === 'doughnut' ? ' T' : '');
+        } } }
+      },
       scales: type === 'doughnut' ? {} : { y: { beginAtZero: true }, x: { ticks: { maxRotation: 55, minRotation: 0 } } }
     }, opts)
   });
@@ -691,8 +763,8 @@ function renderCharts(ls) {
   // 4 weekly
   g = [...groupBy(ls.filter(L => L.date), L => weekStart(L.date)).entries()].map(([k, l]) => ({ k, m: agg(l) })).sort((a, b) => a.k.localeCompare(b.k));
   mkChart('c4', 'c4', 'line', g.map(x => x.k), [
-    { label: 'PO (T)', data: g.map(x => +x.m.po.toFixed(2)), borderColor: B, backgroundColor: '#98c9a533', fill: true, tension: .25 },
-    { label: 'GRN (T)', data: g.map(x => +x.m.grn.toFixed(2)), borderColor: G, backgroundColor: '#246b3b22', fill: true, tension: .25 }]);
+    { label: 'PO (T)', data: g.map(x => +x.m.po.toFixed(2)), borderColor: B, backgroundColor: '#98c9a533', fill: true, tension: .25, pointRadius: 3, pointHoverRadius: 7 },
+    { label: 'GRN (T)', data: g.map(x => +x.m.grn.toFixed(2)), borderColor: G, backgroundColor: '#246b3b22', fill: true, tension: .25, pointRadius: 3, pointHoverRadius: 7 }]);
 }
 
 /* ---------- warnings ---------- */
@@ -718,7 +790,7 @@ function renderTabs() {
   const mk = (name, label, disabled, title) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'chip' + (S.tab === name ? ' active' : ''); b.textContent = label; b.disabled = !!disabled; if (title) b.title = title;
-    b.onclick = () => { S.tab = name; S.exp.t3.clear(); S.exp.t4.clear(); renderTabs(); showView(); refreshFilterOptions(); render(); };
+    b.onclick = () => { S.tab = name; for (const k in S.exp) S.exp[k].clear(); renderTabs(); showView(); refreshFilterOptions(); render(); };
     host.appendChild(b);
   };
   const loaded = Object.keys(S.raw);
@@ -731,6 +803,7 @@ function showView() {
   const m = S.tab === 'Mapping';
   $('view-dash').style.display = m ? 'none' : '';
   $('view-map').style.display = m ? '' : 'none';
+  $('wrapPlat').style.display = S.tab === 'Overall' ? '' : 'none';
 }
 
 /* ---------- Mapping & checks view ---------- */
@@ -781,12 +854,12 @@ function renderMapping() {
 document.addEventListener('change', e => {
   const t = e.target;
   const later = () => setTimeout(() => { rebuild(); renderMapping(); }, 0);   // deferred: avoids re-drawing while the field is losing focus
-  if (t.dataset.status) { S.statusMap[t.dataset.status] = t.value; LS.set('po_statusmap', S.statusMap); later(); }
-  else if (t.dataset.loc) { S.locMap[t.dataset.loc] = t.value.trim(); LS.set('po_locmap', S.locMap); later(); }
+  if (t.dataset.status) { S.statusMap[t.dataset.status] = t.value; saveSettings(); later(); }
+  else if (t.dataset.loc) { S.locMap[t.dataset.loc] = t.value.trim(); saveSettings(); later(); }
   else if (t.dataset.ovc || t.dataset.ovu) {
     const k = t.dataset.ovc || t.dataset.ovu, o = S.overrides[k] || {};
     if (t.dataset.ovc) o.c = t.value; else o.u = t.value === '' ? '' : Number(t.value);
-    S.overrides[k] = o; LS.set('po_overrides', S.overrides); later();
+    S.overrides[k] = o; saveSettings(); later();
   }
 });
 
@@ -810,7 +883,7 @@ async function loadFiles(fileList) {
   for (const f of fileList) {
     try {
       const r = await readFile(f);
-      if (!r.P) { log.push(`❌ ${f.name}: platform not recognised. Columns found: ${r.cols.join(', ')}`); continue; }
+      if (!r.P) { log.push(`❌ ${f.name}: platform not recognised. Columns found: ${esc(r.cols.join(', '))}`); continue; }
       const mapFn = PLATFORMS[r.P].map, base = [];
       for (const row of r.rows) {
         const b = mapFn(row);
@@ -818,14 +891,103 @@ async function loadFiles(fileList) {
         base.push({ ...b, po, date: toISO(b.date), expiry: toISO(b.expiry), qty: num(b.qty), grn: num(b.grn), can: num(b.can) });
       }
       S.raw[r.P] = base;
-      S.files[r.P] = { name: f.name, rows: r.rows.length };
-      log.push(`✅ ${f.name} → <b>${r.P}</b>: ${I(base.length)} lines, ${I(new Set(base.map(x => x.po)).size)} POs`);
-    } catch (err) { console.error(err); log.push(`❌ ${f.name}: ${esc(err.message)}`); }
+      S.files[r.P] = { name: f.name, rows: base.length, pos: new Set(base.map(x => x.po)).size, at: new Date().toISOString() };
+      let saved;
+      try { saved = await persistPlatform(r.P); } catch (err) { console.error(err); saved = '⚠ could not be saved (' + esc(err.message) + ')'; }
+      log.push(`✅ ${esc(f.name)} → <b>${r.P}</b>: ${I(base.length)} lines, ${I(S.files[r.P].pos)} POs — ${saved}`);
+    } catch (err) { console.error(err); log.push(`❌ ${esc(f.name)}: ${esc(err.message)}`); }
   }
   $('loadLog').innerHTML = log.join('<br>');
-  if (S.tab !== 'Overall' && S.tab !== 'Mapping' && !S.raw[S.tab]) S.tab = 'Overall';
-  rebuild(); renderTabs(); showView(); refreshFilterOptions(); render();
+  afterDataChange();
 }
+function afterDataChange() {
+  if (S.tab !== 'Overall' && S.tab !== 'Mapping' && !S.raw[S.tab]) S.tab = 'Overall';
+  rebuild(); renderLoaded(); renderTabs(); showView(); refreshFilterOptions();
+  if (!S.lines.length) { $('kpis').innerHTML = '<div class="status" style="grid-column:1/-1">No data loaded. Upload the raw PO dumps above.</div>'; for (const k of ['tPlat','t1','t2','t3','t4','t5','t6']) $(k).innerHTML = ''; for (const c in S.charts) { S.charts[c].destroy(); delete S.charts[c]; } $('warnBox').innerHTML = ''; }
+  else render();
+}
+
+/* ---------- saving: this browser (IndexedDB) + shared database (Firebase REST) ---------- */
+const sharedUrl = () => String(LS.get('po_shared_url', '') || SHARED_DB_URL || '').trim().replace(/\/+$/, '');
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open('po_dash', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbDo(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction('kv', mode); const rq = fn(tx.objectStore('kv')); tx.oncomplete = () => res(rq && rq.result); tx.onerror = () => rej(tx.error); }); }
+const idbSet = (k, v) => idbDo('readwrite', st => st.put(v, k));
+const idbGet = k => idbDo('readonly', st => st.get(k));
+const idbDel = k => idbDo('readwrite', st => st.delete(k));
+const idbKeys = () => idbDo('readonly', st => st.getAllKeys());
+async function toB64(text) {
+  const cs = new CompressionStream('gzip'), w = cs.writable.getWriter(); w.write(new TextEncoder().encode(text)); w.close();
+  const bytes = new Uint8Array(await new Response(cs.readable).arrayBuffer()); let bin = '';
+  for (let i = 0; i < bytes.length; i += 32768) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
+  return btoa(bin);
+}
+async function fromB64(b64) {
+  const bin = atob(b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const ds = new DecompressionStream('gzip'), w = ds.writable.getWriter(); w.write(bytes); w.close();
+  return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
+}
+async function dbCall(method, path, body) {
+  const r = await fetch(sharedUrl() + '/po/' + path + '.json', { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (!r.ok) throw new Error('shared database answered ' + r.status);
+  return method === 'GET' ? r.json() : null;
+}
+async function persistPlatform(P) {
+  const rec = { name: S.files[P].name, rows: S.files[P].rows, pos: S.files[P].pos, at: S.files[P].at, z: await toB64(JSON.stringify(S.raw[P])) };
+  try { await idbSet('plat:' + P, rec); } catch (e) { console.warn('local save failed', e); }
+  if (sharedUrl()) { await dbCall('PUT', 'plat_' + P, rec); return '🟢 saved for everyone (shared)'; }
+  return '🟡 saved in this browser only';
+}
+async function removePlatform(P) {
+  delete S.raw[P]; delete S.files[P];
+  try { await idbDel('plat:' + P); } catch (e) {}
+  if (sharedUrl()) await dbCall('DELETE', 'plat_' + P);
+}
+let settingsTimer = null;
+function saveSettings() {
+  const st = { overrides: S.overrides, locMap: S.locMap, statusMap: S.statusMap };
+  LS.set('po_overrides', S.overrides); LS.set('po_locmap', S.locMap); LS.set('po_statusmap', S.statusMap);
+  clearTimeout(settingsTimer);
+  settingsTimer = setTimeout(async () => { try { await idbSet('settings', st); if (sharedUrl()) await dbCall('PUT', 'settings', st); } catch (e) { console.warn(e); } }, 400);
+}
+async function loadSaved() {
+  let msg = '';
+  const recs = {};
+  let settings = null;
+  if (sharedUrl()) {
+    try {
+      const all = await dbCall('GET', '') || {};
+      for (const k in all) { if (k.startsWith('plat_')) recs[k.slice(5)] = all[k]; else if (k === 'settings') settings = all[k]; }
+      msg = 'shared';
+    } catch (e) { msg = 'offline'; console.warn(e); }
+  }
+  if (msg !== 'shared') {
+    try { for (const k of await idbKeys()) { if (String(k).startsWith('plat:')) recs[String(k).slice(5)] = await idbGet(k); } settings = await idbGet('settings'); } catch (e) { console.warn(e); }
+  }
+  S.raw = {}; S.files = {};
+  for (const P of Object.keys(recs)) {
+    try { S.raw[P] = JSON.parse(await fromB64(recs[P].z)); S.files[P] = { name: recs[P].name, rows: recs[P].rows, pos: recs[P].pos, at: recs[P].at }; } catch (e) { console.warn('could not read saved ' + P, e); }
+  }
+  if (settings) { S.overrides = settings.overrides || {}; S.locMap = settings.locMap || {}; S.statusMap = settings.statusMap || {}; }
+  S.storeMode = msg;
+}
+function renderLoaded() {
+  const ps = PLATFORM_ORDER.filter(P => S.raw[P]);
+  $('loadedTbl').innerHTML = ps.length ? '<table><thead><tr><th>Platform</th><th>File</th><th>Uploaded</th><th class="num">Lines</th><th class="num">POs</th><th></th></tr></thead><tbody>' +
+    ps.map(P => { const f = S.files[P] || {}; return `<tr><td><b>${P}</b></td><td>${esc(f.name)}</td><td>${f.at ? new Date(f.at).toLocaleString('en-IN') : ''}</td><td class="num">${I(S.raw[P].length)}</td><td class="num">${I(f.pos)}</td><td><button class="del" data-del="${P}">🗑 Delete ${P} data</button></td></tr>`; }).join('') + '</tbody></table>' : '';
+  $('storeInfo').innerHTML = sharedUrl()
+    ? (S.storeMode === 'offline' ? '🔴 Shared storage is set but could not be reached – showing the copy saved in this browser.' : '🟢 Shared storage ON – uploads are visible to everyone who opens this link. Uploading a new file replaces that platform\'s data; Delete removes it for everyone.')
+    : '🟡 Shared storage is not set up – data is saved only in this browser (it survives refresh, but other people cannot see it).';
+}
+document.addEventListener('click', async e => {
+  const d = e.target.closest('button[data-del]'); if (!d) return;
+  const P = d.dataset.del;
+  if (!confirm(`Delete all ${P} data${sharedUrl() ? ' for everyone' : ''}? This cannot be undone.`)) return;
+  try { await removePlatform(P); $('loadLog').innerHTML = `🗑 ${P} data deleted.`; } catch (err) { $('loadLog').innerHTML = '❌ Could not delete: ' + esc(err.message); }
+  afterDataChange();
+});
+$('btnRefresh').onclick = async () => { $('loadLog').textContent = 'Refreshing…'; await loadSaved(); $('loadLog').textContent = 'Refreshed.'; afterDataChange(); };
+$('dbUrl').value = LS.get('po_shared_url', '') || '';
+$('btnDbSave').onclick = async () => { LS.set('po_shared_url', $('dbUrl').value.trim()); await loadSaved(); afterDataChange(); };
 $('files').addEventListener('change', e => { if (e.target.files.length) loadFiles([...e.target.files]); });
 const drop = $('drop');
 ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
@@ -845,10 +1007,11 @@ $('masterFile').addEventListener('change', async e => {
 $('btnMasterReset').onclick = () => { LS.del('po_master'); S.master = MASTER_DEFAULT; S.masterCustom = false; buildMasterIndex(); rebuild(); refreshFilterOptions(); render(); };
 
 /* filter events */
-['fCity', 'fCat', 'fSku', 'fStatus', 'fFrom', 'fTo', 'fPo', 'fExcl'].forEach(id => $(id).addEventListener(id === 'fPo' ? 'input' : 'change', render));
+[msPlat, msCity, msCat, msSku, msStatus].forEach(m => m.onchange = () => render());
+['fFrom', 'fTo', 'fPo', 'fExcl'].forEach(id => $(id).addEventListener(id === 'fPo' ? 'input' : 'change', render));
 $('fAsOn').addEventListener('change', () => { rebuild(); render(); });
 $('btnReset').onclick = () => {
-  ['fCity', 'fCat', 'fSku', 'fStatus'].forEach(id => $(id).value = 'All');
+  [msPlat, msCity, msCat, msSku, msStatus].forEach(m => m.clear());
   $('fFrom').value = $('fTo').value = $('fPo').value = ''; $('fExcl').checked = false; render();
 };
 
@@ -888,6 +1051,8 @@ $('btnExport').onclick = () => {
   add('MIS2 Category', ['Category'], misRows(ls, [LV.cat]));
   add('MIS3 City-Category', ['City', 'Category'], misRows(ls, [LV.city, LV.cat]));
   add('MIS4 City-Cat-SKU', ['City', 'Category', 'SKU'], misRows(ls, [LV.city, LV.cat, LV.sku]));
+  add('MIS5 Category-City', ['Category', 'City'], misRows(ls, [LV.cat, LV.city]));
+  add('MIS6 Category-City-SKU', ['Category', 'City', 'SKU'], misRows(ls, [LV.cat, LV.city, LV.sku]));
   const data = [['Platform', 'PO', 'PO date', 'Expiry', 'Status (file)', 'Bucket', 'City', 'Location (file)', 'Category', 'SKU', 'Material code', 'Item ID', 'Item name', 'Pack kg/L', 'PO qty', 'GRN qty', 'PO (T)', 'GRN (T)', 'Open (T)', 'Expired (T)', 'Cancelled (T)', 'Short-closed (T)']]
     .concat(ls.map(L => [L.P, L.po, L.date, L.expiry, L.status, L.bucket, L.city, L.rawLoc, L.cat, L.skuLabel, L.mat, L.id, L.desc, L.kg, L.qty, L.grn, L.t.po, L.t.grn, L.t.open, L.t.exp, L.t.can, L.t.short]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Mapped data');
@@ -896,9 +1061,10 @@ $('btnExport').onclick = () => {
 
 /* ---------- start ---------- */
 $('fAsOn').value = todayISO();
-buildMasterIndex(); renderTabs(); showView();
-document.getElementById('kpis').innerHTML = '<div class="status" style="grid-column:1/-1">Upload the raw PO dumps above to see the dashboard.</div>';
+buildMasterIndex(); renderTabs(); showView(); renderLoaded();
+$('kpis').innerHTML = '<div class="status" style="grid-column:1/-1">Loading saved data…</div>';
 if (typeof XLSX === 'undefined') $('loadLog').innerHTML = '<div class="warn">The helper libraries could not be loaded. Please open this page with an internet connection.</div>';
+window.__ready = loadSaved().then(() => { afterDataChange(); if (!S.lines.length) $('kpis').innerHTML = '<div class="status" style="grid-column:1/-1">Upload the raw PO dumps above to see the dashboard.</div>'; });
 window.__S = S;   // handy for testing
 </script>
 </body>
