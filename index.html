@@ -115,7 +115,8 @@ details.setup { margin-top: 12px; font-size: 13px; } details.setup summary { cur
     <div id="loadLog" class="status" style="margin-top:12px">No files loaded yet.</div>
     <div id="loadedTbl" class="table-wrap mini" style="margin-top:10px"></div>
     <div id="storeInfo" class="small" style="margin-top:8px"></div>
-    <div class="toolbar"><button class="light" id="btnRefresh">↻ Refresh saved data</button></div>
+    <div class="toolbar"><button class="light" id="btnRefresh">↻ Refresh saved data</button><button id="btnShareFile">⬇ Download data file to share (po-data.json)</button></div>
+    <div class="small">Sharing without a database: click the green button, then upload the downloaded <b>po-data.json</b> into your GitHub repository (next to index.html, replacing the old one). Everyone who opens the link then sees this data automatically (GitHub can take 1–2 minutes to update).</div>
     <div class="small" style="margin-top:4px">SKU master in use: <span id="masterInfo"></span></div>
     <details class="setup"><summary>Shared storage (so everyone with the link sees the data)</summary>
       <p class="note">Paste your Firebase database URL here to test it in this browser. For <b>everybody</b> to see the data, the same URL must be written in the <code>SHARED_DB_URL</code> line at the top of this file (see the setup steps).</p>
@@ -963,6 +964,17 @@ async function loadSaved() {
   if (msg !== 'shared') {
     try { for (const k of await idbKeys()) { if (String(k).startsWith('plat:')) recs[String(k).slice(5)] = await idbGet(k); } settings = await idbGet('settings'); } catch (e) { console.warn(e); }
   }
+  if (!sharedUrl()) {      // no database: look for po-data.json published next to index.html
+    try {
+      const r = await fetch('po-data.json?v=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) {
+        const f = await r.json(); S.fileAt = f.at;
+        for (const P in (f.plats || {})) if (!recs[P] || String(f.plats[P].at) > String(recs[P].at)) recs[P] = f.plats[P];
+        if (!settings && f.settings) settings = f.settings;
+        msg = msg || 'file';
+      }
+    } catch (e) { /* file not published yet */ }
+  }
   S.raw = {}; S.files = {};
   for (const P of Object.keys(recs)) {
     try { S.raw[P] = JSON.parse(await fromB64(recs[P].z)); S.files[P] = { name: recs[P].name, rows: recs[P].rows, pos: recs[P].pos, at: recs[P].at }; } catch (e) { console.warn('could not read saved ' + P, e); }
@@ -976,7 +988,8 @@ function renderLoaded() {
     ps.map(P => { const f = S.files[P] || {}; return `<tr><td><b>${P}</b></td><td>${esc(f.name)}</td><td>${f.at ? new Date(f.at).toLocaleString('en-IN') : ''}</td><td class="num">${I(S.raw[P].length)}</td><td class="num">${I(f.pos)}</td><td><button class="del" data-del="${P}">🗑 Delete ${P} data</button></td></tr>`; }).join('') + '</tbody></table>' : '';
   $('storeInfo').innerHTML = sharedUrl()
     ? (S.storeMode === 'offline' ? '🔴 Shared storage is set but could not be reached – showing the copy saved in this browser.' : '🟢 Shared storage ON – uploads are visible to everyone who opens this link. Uploading a new file replaces that platform\'s data; Delete removes it for everyone.')
-    : '🟡 Shared storage is not set up – data is saved only in this browser (it survives refresh, but other people cannot see it).';
+    : (S.storeMode === 'file' ? '🟦 Showing data from the published po-data.json file (uploaded to GitHub). Anything you upload here stays in your browser until you download a new po-data.json and upload it to GitHub.'
+       : '🟡 Not shared yet – data is saved only in this browser. To let others see it, click “Download data file to share” and upload po-data.json to GitHub.');
 }
 document.addEventListener('click', async e => {
   const d = e.target.closest('button[data-del]'); if (!d) return;
@@ -985,6 +998,14 @@ document.addEventListener('click', async e => {
   try { await removePlatform(P); $('loadLog').innerHTML = `🗑 ${P} data deleted.`; } catch (err) { $('loadLog').innerHTML = '❌ Could not delete: ' + esc(err.message); }
   afterDataChange();
 });
+$('btnShareFile').onclick = async () => {
+  const ps = PLATFORM_ORDER.filter(P => S.raw[P]);
+  if (!ps.length) { alert('Load some data first.'); return; }
+  const plats = {};
+  for (const P of ps) plats[P] = { name: S.files[P].name, rows: S.files[P].rows, pos: S.files[P].pos, at: S.files[P].at, z: await toB64(JSON.stringify(S.raw[P])) };
+  const out = { at: new Date().toISOString(), plats, settings: { overrides: S.overrides, locMap: S.locMap, statusMap: S.statusMap } };
+  download([JSON.stringify(out)], 'po-data.json', 'application/json');
+};
 $('btnRefresh').onclick = async () => { $('loadLog').textContent = 'Refreshing…'; await loadSaved(); $('loadLog').textContent = 'Refreshed.'; afterDataChange(); };
 $('dbUrl').value = LS.get('po_shared_url', '') || '';
 $('btnDbSave').onclick = async () => { LS.set('po_shared_url', $('dbUrl').value.trim()); await loadSaved(); afterDataChange(); };
